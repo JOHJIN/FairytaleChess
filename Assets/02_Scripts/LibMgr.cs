@@ -36,10 +36,6 @@ public class LibMgr : MonoBehaviour
 
     void Update()
     {
-        if(Input.GetMouseButton(1))
-            enermyLoadAndStage();
-        if (Input.GetKeyDown(KeyCode.Keypad0))
-            gameflow.StartBtn();
     }
 
     private void Awake()
@@ -63,15 +59,25 @@ public class LibMgr : MonoBehaviour
         {
             while (rnd == playerableNum) rnd = UnityEngine.Random.Range(0, bossList.Count);
             bossToMeet.Add(new List<object> { bossList[rnd]["ID"], rnd });
-            //gameflow.StartBtn();
+            gameflow.StartBtn();
         }
         else
         {
             stageLevelCount++;
-
-            while (rnd == playerableNum) rnd = UnityEngine.Random.Range(0, bossList.Count);
-            bossToMeet.Add(new List<object> { bossList[rnd]["ID"], rnd });
-            //gameflow.StartBtn();
+            Debug.Log(stageLevelCount);
+            Debug.Log(Convert.ToInt64(bossToMeet[stageLevelCount-1][1]));
+            while (true)
+            {
+                rnd = UnityEngine.Random.Range(0, bossList.Count);
+                //리스트에 모든 오브젝트 중 하나라도 rnd랑 Convert.Int32값이 같으면 참 // boss는 임의의 오브젝트 변수
+                bool checkOtherBoss = rnd == playerableNum || bossToMeet.Any(boss => Convert.ToInt32(boss[1]) == rnd);
+                if (!checkOtherBoss)
+                {
+                    bossToMeet.Add(new List<object> { bossList[rnd]["ID"], rnd });
+                    gameflow.StartBtn();
+                    break; 
+                }
+            }
         }
     }
     public IEnumerator listAndCoad()

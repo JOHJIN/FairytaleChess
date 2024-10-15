@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Tilemaps;
@@ -12,6 +13,7 @@ public class GameMgr : MonoBehaviour
 
     public int turnMove = 0;
     public int turnMaxMove = 2;
+    public bool canMove = true;
 
     public GameObject selectUnit;
     public bool selectOn = false;
@@ -51,7 +53,7 @@ public class GameMgr : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetMouseButton(0))
+        if (Input.GetMouseButtonDown(0))
         {
             RaycastHit hit;
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
@@ -74,7 +76,7 @@ public class GameMgr : MonoBehaviour
                         //배치타임
                         if (placementTime)
                         {
-                            if (selectUnit.GetComponent<Units>().placeAnywhere 
+                            if (selectUnit.GetComponent<Units>().placeAnywhere
                                 && hit.collider.transform.position.z <= mapMaxZ - friendlyZone)
                             {
                                 selectUnit.transform.position =
@@ -95,13 +97,13 @@ public class GameMgr : MonoBehaviour
 
                         }
                         //게임 중 클릭으로 유닛 이동 기능
-                        else
+                        else if (!placementTime && canMove)
                         {
                             float minusX = hit.collider.transform.position.x -
                                     selectUnit.transform.position.x;
                             float minusZ = hit.collider.transform.position.z -
                                 selectUnit.transform.position.z;
-                            if (Mathf.Abs(minusX) <= 1.2 && Mathf.Abs(minusZ) <= 1.2)
+                            if (Mathf.Abs(minusX) <= 1.2 && Mathf.Abs(minusZ) <= 1.2 && !playerUnits.Any(s => s.GetComponent<Units>().moveSmooth == true))
                             {
                                 //비숍
                                 if (Mathf.Abs(minusX) + Mathf.Abs(minusZ) >= 2)
@@ -110,19 +112,19 @@ public class GameMgr : MonoBehaviour
                                     {
                                         unitMove(1, 1);
                                     }
-                                    if (minusX < -0.4 && minusZ > 0.4)
+                                    else if (minusX < -0.4 && minusZ > 0.4)
                                     {
                                         unitMove(-1, 1);
                                     }
-                                    if (minusX > 0.4 && minusZ < -0.4)
+                                    else if (minusX > 0.4 && minusZ < -0.4)
                                     {
                                         unitMove(1, -1);
                                     }
-                                    if (minusX < -0.4 && minusZ < -0.4)
+                                    else if (minusX < -0.4 && minusZ < -0.4)
                                     {
                                         unitMove(-1, -1);
                                     }
-                                    else 
+                                    else
                                     {
                                         selectUnit = null;
                                         selectOn = false;
@@ -160,6 +162,8 @@ public class GameMgr : MonoBehaviour
                                 selectOn = false;
                             }
                         }
+                        else
+                        { Debug.Log("canMove is false"); }
                     }                  
                     else
                     {
@@ -176,7 +180,7 @@ public class GameMgr : MonoBehaviour
         }
 
         //이동키, 키패드로 유닛 이동
-        if (selectOn && !placementTime)
+        if (selectOn && !placementTime && !playerUnits.Any(s => s.GetComponent<Units>().moveSmooth == true) && canMove)
         {
             if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.Keypad4))
             {
@@ -215,6 +219,8 @@ public class GameMgr : MonoBehaviour
             //{ 
             //}
         }
+        else if(!canMove)
+        { Debug.Log("canMove is false"); }
 
         //턴 시간 제한
         if (playerTurn && !placementTime)
@@ -250,6 +256,7 @@ public class GameMgr : MonoBehaviour
         // 턴 종료시 버튼 클릭
         if(playerTurn && !placementTime)
         {
+            canMove = false;
             gmrUi.whosTurnTxtChange();
             turnTime = 0;
             playerTurn = false;
@@ -306,6 +313,8 @@ public class GameMgr : MonoBehaviour
         turnTime = 0;
         selectOn = false;
         playerTurn = true;
+        canMove = true;
+        playerUnits.ForEach(pUnits => pUnits.GetComponent<Units>().moveAble = true); // 플레이어 유닛 전원 무브 가능 상태로 람다식
         yield return new WaitForSecondsRealtime(0.5f);
     }
 
@@ -442,13 +451,14 @@ public class GameMgr : MonoBehaviour
         mainCam.transform.position = new Vector3(mapMaxX / 2 + 0.5f, mapMaxZ + 2, mapMaxZ / 2);
     }
 
-    //유닛 배치
+    //보스 유닛 배치
     public IEnumerator unitplacementCoro()
     {
         yield return new WaitForSeconds(0.05f);
         rndbossplace = UnityEngine.Random.Range(1, mapMaxX + 1);
         enermyUnits[0].GetComponent<Units>().placeMove(new Vector3(rndbossplace, enermyUnits[0].transform.position.y, mapMaxZ));
     }
+    //다른 유닛 마저 배치
     public void unitplacementMore()
     {
         for (int k = 0; k < 1; k++)
@@ -519,76 +529,4 @@ public class GameMgr : MonoBehaviour
             }
         }
     }
-
-    //    Debug.Log(3);
-    //    int luckCount = 0;
-    //    //기본 유닛 배치
-    //    for (int k = 1; k < enermyUnits.Count; k++)
-    //    {
-    //        if (enermyUnits[k].GetComponent<Units>().placeAnywhere)
-    //        {
-    //            int rnd = UnityEngine.Random.Range(1, mapMaxX + 1);
-    //            int rnd2 = UnityEngine.Random.Range(friendlyZone + 1, mapMaxZ + 1);
-
-    //            Vector3 upUnitPlace = new Vector3(rnd, 3, rnd2);
-    //            if (Physics.Raycast(upUnitPlace, Vector3.down, out RaycastHit hit, 15f))
-    //            {
-    //                if (hit.collider.tag == "Tile")
-    //                {
-    //                    enermyUnits[k].transform.position = new Vector3(rnd, 0, rnd2);
-    //                    luckCount = 0;
-    //                    yield return new WaitForSeconds(0.05f);
-    //                }
-    //                else
-    //                {
-    //                    k--;
-    //                    luckCount++;
-    //                    if (luckCount >= 30)
-    //                    {
-    //                        Destroy(enermyUnits[k]);
-    //                        enermyUnits.RemoveAt(k);
-    //                        luckCount = 0;
-    //                    }
-    //                }
-    //            }
-    //        }
-    //        else
-    //        {
-    //            Debug.Log(4);
-
-    //            //int layerMask = (-1) - (1 << LayerMask.NameToLayer("PlayerUnits"));
-    //            int rnd = UnityEngine.Random.Range(1, mapMaxX + 1);
-    //            int rnd2 = UnityEngine.Random.Range(0, friendlyZone);
-    //            Vector3 upUnitPlace = new Vector3(rnd, 10, mapMaxZ - rnd2);
-    //            if (Physics.Raycast(upUnitPlace, Vector3.down, out RaycastHit hit, 15f))
-    //            {
-    //                Debug.DrawRay(upUnitPlace, Vector3.down * 15, Color.red, 10f);
-    //                if (hit.collider.tag == "Tile")
-    //                {
-    //                    Debug.Log(enermyUnits[0].transform.position);
-    //                    Debug.Log(hit.collider);
-    //                    Debug.Log(hit.collider.transform.position);
-    //                    enermyUnits[k].transform.position = new Vector3(rnd, 0, mapMaxZ - rnd2);
-    //                    luckCount = 0;
-    //                    yield return new WaitForSeconds(0.05f);
-    //                }
-    //                else
-    //                {
-    //                    Debug.Log("p2");
-    //                    Debug.Log(hit.collider);
-    //                    k--;
-    //                    luckCount++;
-    //                    if (luckCount >= 30)
-    //                    {
-    //                        Destroy(enermyUnits[k]);
-    //                        enermyUnits.RemoveAt(k);
-    //                        luckCount = 0;
-    //                    }
-    //                }
-    //            }
-    //        }
-
-    //    }
-    //    Debug.Log(5);
-    //}
 }

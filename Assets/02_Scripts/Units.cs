@@ -102,6 +102,8 @@ public class Units : MonoBehaviour
                         moveAble = false;
                         gmr.selectOn = false;
                         gmr.turnMove++;
+                        if (gmr.turnMaxMove <= gmr.turnMove)
+                        { gmr.canMove = false; }
                         gmrUi.moveCountTxtChange(gmr.turnMaxMove - gmr.turnMove);
                     }
                     else if (moveCount < moveMaxCount)
@@ -115,6 +117,7 @@ public class Units : MonoBehaviour
                 {
                     if (pawn && Destination.z == -1)
                         return;
+
                     UnitVec = transform.position + Destination;
                     moveCount++;
                     moveSmooth = true;
@@ -128,14 +131,11 @@ public class Units : MonoBehaviour
                     else if (moveCount < moveMaxCount)
                     { }// 이 유닛을 움직이지 않으면 moveAble = false로
                 }
-
             }
 
         }
         else if (!moveAble)
-        {
             Debug.Log("!moveAble");
-        }
     }
 
     public void placeMove(Vector3 placeVec)
