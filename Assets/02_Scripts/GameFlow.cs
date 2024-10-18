@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -7,10 +8,14 @@ public class GameFlow : MonoBehaviour
 {
     public GameObject CharacterSelectPanel;
 
-    public LibMgr libmgr;
+    public GameObject libmgr;
     void Start()
     {
-        
+        libmgr = GameObject.Find("LibMgr");
+        libmgr.GetComponent<LibMgr>().gameflow = GetComponent<GameFlow>();
+
+        Debug.Log(Convert.ToInt32(libmgr.GetComponent<LibMgr>().normalUnits[1]["øµ¿‘ »Ò±Õµµ"]));
+        if (Convert.ToInt32(libmgr.GetComponent<LibMgr>().normalUnits[1]["øµ¿‘ »Ò±Õµµ"]) == 5) Debug.Log("dddddd");
     }
 
     void Update()
@@ -25,5 +30,22 @@ public class GameFlow : MonoBehaviour
     public void StartBtn()
     {
         SceneManager.LoadScene(1);
+    }
+
+    public void GoMainBtn()
+    {
+        SceneManager.LoadScene(0);
+        Destroy(gameObject);
+    }
+
+    public void LoseGoMain()
+    {
+        Destroy(libmgr);
+        SceneManager.LoadScene(0);
+        Destroy(gameObject);
+    }
+    public void GoShopBtn()
+    {
+        SceneManager.LoadScene(2);
     }
 }

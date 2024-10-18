@@ -1350,7 +1350,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 08ff5d28f2c6a5842834e6fa1ff57365, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  gameflow: {fileID: 1767303672}
+  gameflow: {fileID: 0}
+  stageLevelCount: 0
+  playerableNum: 0
 --- !u!4 &1140840916
 Transform:
   m_ObjectHideFlags: 0
@@ -1411,7 +1413,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   CharacterSelectPanel: {fileID: 983988834}
-  library: {fileID: 1140840915}
+  library: {fileID: 0}
   charNum: 100
   strBtn: {fileID: 421165011}
 --- !u!1 &1214462465
@@ -1803,7 +1805,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1647419689}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 1159162441}
+        m_TargetAssemblyTypeName: MenuMgr, Assembly-CSharp
+        m_MethodName: ContinueBtn
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &1647419689
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1872,6 +1886,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   CharacterSelectPanel: {fileID: 983988834}
+  libmgr: {fileID: 0}
 --- !u!4 &1767303673
 Transform:
   m_ObjectHideFlags: 0

@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class MenuMgr : MonoBehaviour
@@ -14,6 +15,7 @@ public class MenuMgr : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        library = GameObject.Find("LibMgr").GetComponent<LibMgr>();
         charNum = 100;
     }
 
@@ -44,5 +46,9 @@ public class MenuMgr : MonoBehaviour
     public void charcterSelectToStart()
     {
         library.loadPlayerableDate(charNum);
+    }
+    public void ContinueBtn()
+    {
+        SceneManager.LoadScene(2);
     }
 }

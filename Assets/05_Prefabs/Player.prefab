@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 3751542779858004364}
   - component: {fileID: 4283658624531154005}
   - component: {fileID: 815408489103024924}
+  - component: {fileID: 4599738319478113789}
   m_Layer: 6
   m_Name: Player
   m_TagString: Player
@@ -133,5 +134,28 @@ MonoBehaviour:
   rook: 1
   bishop: 0
   pawn: 0
+  attackEvery: 0
   placeAnywhere: 0
   moveSmooth: 0
+  placementMove: 0
+--- !u!95 &4599738319478113789
+Animator:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1645479988613875403}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 931545ec021661142be23a66203375b5, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0

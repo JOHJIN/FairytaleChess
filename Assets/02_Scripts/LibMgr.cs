@@ -28,8 +28,17 @@ public class LibMgr : MonoBehaviour
 
     public int stageLevelCount = 0;
     public int playerableNum;
+
+    public int money = 0;
+
+    static GameObject LIBMGR;
     void Start()
     {
+        if (LIBMGR != null)
+        {
+            Destroy(gameObject);
+        }
+        else LIBMGR = this.gameObject;
         StartCoroutine(listAndCoad());
     }
 
@@ -61,11 +70,17 @@ public class LibMgr : MonoBehaviour
             bossToMeet.Add(new List<object> { bossList[rnd]["ID"], rnd });
             gameflow.StartBtn();
         }
+        else if (bossToMeet.Count >= 6)
+        { 
+            stageLevelCount++;
+            bossToMeet.Add(new List<object> { bossList[playerableNum]["ID"], playerableNum });
+            gameflow.StartBtn();
+        }
         else
         {
             stageLevelCount++;
-            Debug.Log(stageLevelCount);
-            Debug.Log(Convert.ToInt64(bossToMeet[stageLevelCount-1][1]));
+            //Debug.Log(stageLevelCount);
+            //Debug.Log(Convert.ToInt32(bossToMeet[stageLevelCount-1][1]));
             while (true)
             {
                 rnd = UnityEngine.Random.Range(0, bossList.Count);
@@ -75,7 +90,7 @@ public class LibMgr : MonoBehaviour
                 {
                     bossToMeet.Add(new List<object> { bossList[rnd]["ID"], rnd });
                     gameflow.StartBtn();
-                    break; 
+                    break;
                 }
             }
         }

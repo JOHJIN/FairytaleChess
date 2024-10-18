@@ -6,6 +6,7 @@ using System.Linq;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Tilemaps;
+using UnityEngine.UI;
 
 public class GameMgr : MonoBehaviour
 {
@@ -46,6 +47,14 @@ public class GameMgr : MonoBehaviour
     public Camera mainCam;
 
     int rndbossplace = 0;
+
+    public Text playerdiceTxt;
+    public Text enermydiceTxt;
+    public GameObject FightPanel;
+    public GameObject winPanel;
+    public bool win = false;
+    public GameObject losePanel;
+    public bool lose = false;
     void Start()
     {
         StartCoroutine(gmrStartCorou());
@@ -61,8 +70,15 @@ public class GameMgr : MonoBehaviour
             {
                 if (hit.collider.tag == "Friendly" || hit.collider.tag == "Player")
                 {
-                    selectUnit = hit.collider.gameObject;
-                    selectOn = true;
+                    if (selectOn && selectUnit.GetComponent<Units>().changePos)
+                    {
+                        selectUnit.GetComponent<Units>().changingPosition(selectUnit, hit.collider.gameObject);
+                    }
+                    else 
+                    { 
+                        selectUnit = hit.collider.gameObject;
+                        selectOn = true; 
+                    }
                 }
                 else if (hit.collider.tag == "Enermy" || hit.collider.tag == "Boss")
                 {
@@ -94,7 +110,6 @@ public class GameMgr : MonoBehaviour
                                 selectUnit = null;
                                 selectOn = false;
                             }
-
                         }
                         //게임 중 클릭으로 유닛 이동 기능
                         else if (!placementTime && canMove)
@@ -103,24 +118,24 @@ public class GameMgr : MonoBehaviour
                                     selectUnit.transform.position.x;
                             float minusZ = hit.collider.transform.position.z -
                                 selectUnit.transform.position.z;
-                            if (Mathf.Abs(minusX) <= 1.2 && Mathf.Abs(minusZ) <= 1.2 && !playerUnits.Any(s => s.GetComponent<Units>().moveSmooth == true))
+                            if (Mathf.Abs(minusX) <= 1.3 && Mathf.Abs(minusZ) <= 1.3 && !playerUnits.Any(s => s.GetComponent<Units>().moveSmooth == true))
                             {
                                 //비숍
                                 if (Mathf.Abs(minusX) + Mathf.Abs(minusZ) >= 2)
                                 {
-                                    if (minusX > 0.4 && minusZ > 0.4)
+                                    if (minusX > 0.5 && minusZ > 0.5)
                                     {
                                         unitMove(1, 1);
                                     }
-                                    else if (minusX < -0.4 && minusZ > 0.4)
+                                    else if (minusX < -0.5 && minusZ > 0.5)
                                     {
                                         unitMove(-1, 1);
                                     }
-                                    else if (minusX > 0.4 && minusZ < -0.4)
+                                    else if (minusX > 0.5 && minusZ < -0.5)
                                     {
                                         unitMove(1, -1);
                                     }
-                                    else if (minusX < -0.4 && minusZ < -0.4)
+                                    else if (minusX < -0.5 && minusZ < -0.5)
                                     {
                                         unitMove(-1, -1);
                                     }
@@ -133,19 +148,19 @@ public class GameMgr : MonoBehaviour
                                 //룩
                                 else
                                 {
-                                    if (minusX > 0.4 && Mathf.Abs(minusZ) < 0.4)
+                                    if (minusX > 0.5 && Mathf.Abs(minusZ) < 0.5)
                                     {
                                         unitMove(1, 0);
                                     }
-                                    if (minusX < -0.4 && Mathf.Abs(minusZ) < 0.4)
+                                    if (minusX < -0.5 && Mathf.Abs(minusZ) < 0.5)
                                     {
                                         unitMove(-1, 0);
                                     }
-                                    if (Mathf.Abs(minusX) < 0.4 && minusZ > 0.4)
+                                    if (Mathf.Abs(minusX) < 0.5 && minusZ > 0.5)
                                     {
                                         unitMove(0, 1);
                                     }
-                                    if (Mathf.Abs(minusX) < 0.4 && minusZ < -0.4)
+                                    if (Mathf.Abs(minusX) < 0.5 && minusZ < -0.5)
                                     {
                                         unitMove(0, -1);
                                     }
@@ -155,6 +170,15 @@ public class GameMgr : MonoBehaviour
                                         selectOn = false;
                                     }
                                 }
+                            }
+                            //워프
+                            else if (Mathf.Abs(minusX) >= mapMaxX - 1.1 && minusZ == 0 && selectUnit.GetComponent<Units>().warp && selectUnit.GetComponent<Units>().rook)
+                            {
+                                selectUnit.GetComponent<Units>().WarpMove(hit.collider.transform.position);
+                            }
+                            else if (Mathf.Abs(minusX) >= mapMaxX - 1.1 && minusZ == 1 && selectUnit.GetComponent<Units>().warp && selectUnit.GetComponent<Units>().bishop)
+                            {
+                                selectUnit.GetComponent<Units>().WarpMove(hit.collider.transform.position);
                             }
                             else
                             {
@@ -182,45 +206,124 @@ public class GameMgr : MonoBehaviour
         //이동키, 키패드로 유닛 이동
         if (selectOn && !placementTime && !playerUnits.Any(s => s.GetComponent<Units>().moveSmooth == true) && canMove)
         {
+            //레이 쏘아서 바닥 블럭 확인
             if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.Keypad4))
             {
-                unitMove(-1, 0);
+                if (selectUnit.GetComponent<Units>().warp && selectUnit.transform.position.x <= 1.1)
+                {
+                    if (Physics.Raycast(new Vector3(mapMaxX, 1, selectUnit.transform.position.z), Vector3.down, out RaycastHit hhh, 3f))
+                    {
+                        if (hhh.collider.tag == "Tile") selectUnit.GetComponent<Units>().WarpMove(hhh.collider.transform.position);
+                    }
+                }
+                else
+                {
+                    if (Physics.Raycast(selectUnit.transform.position + new Vector3(-1, 1, 0), Vector3.down, out RaycastHit hhh, 3f))
+                    {
+                        if (hhh.collider.tag == "Tile") unitMove(-1, 0);
+                    }
+                }
             }
             else if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.Keypad6))
             {
-                unitMove(1, 0);
+                if (selectUnit.GetComponent<Units>().warp && selectUnit.transform.position.x >= mapMaxX-0.1)
+                {
+                    if (Physics.Raycast(new Vector3(1, 1, selectUnit.transform.position.z), Vector3.down, out RaycastHit hhh, 3f))
+                    {
+                        if (hhh.collider.tag == "Tile") selectUnit.GetComponent<Units>().WarpMove(hhh.collider.transform.position);
+                    }
+                }
+                else
+                {
+                    if (Physics.Raycast(selectUnit.transform.position + new Vector3(1, 1, 0), Vector3.down, out RaycastHit hhh, 3f))
+                    {
+                        if (hhh.collider.tag == "Tile") unitMove(1, 0);
+                    }
+                }
             }
             else if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.Keypad8))
             {
-                unitMove(0, 1);
+                if (Physics.Raycast(selectUnit.transform.position + new Vector3(0, 1, 1), Vector3.down, out RaycastHit hhh, 3f))
+                {
+                    if (hhh.collider.tag == "Tile") unitMove(0, 1);
+                }
             }
             else if (Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.Keypad2))
             {
-                unitMove(0, -1);
+                if (Physics.Raycast(selectUnit.transform.position + new Vector3(0, 1, -1), Vector3.down, out RaycastHit hhh, 3f))
+                {
+                    if (hhh.collider.tag == "Tile") unitMove(0, -1);
+                }
             }
             else if (Input.GetKeyDown(KeyCode.Keypad1))
             {
-                unitMove(-1, -1);
+                if (selectUnit.GetComponent<Units>().warp && selectUnit.transform.position.x <= 1.1 && selectUnit.GetComponent<Units>().bishop)
+                {
+                    if (Physics.Raycast(new Vector3(mapMaxX, 1, selectUnit.transform.position.z - 1), Vector3.down, out RaycastHit hhh, 3f))
+                    {
+                        if (hhh.collider.tag == "Tile") selectUnit.GetComponent<Units>().WarpMove(hhh.collider.transform.position);
+                    }
+                }
+                else
+                {
+                    if (Physics.Raycast(selectUnit.transform.position + new Vector3(-1, 1, -1), Vector3.down, out RaycastHit hhh, 3f))
+                    {
+                        if (hhh.collider.tag == "Tile") unitMove(-1, -1);
+                    }
+                }
             }
             else if (Input.GetKeyDown(KeyCode.Keypad3))
             {
-                unitMove(1, -1);
+                if (selectUnit.GetComponent<Units>().warp && selectUnit.transform.position.x >= mapMaxX - 0.1 && selectUnit.GetComponent<Units>().bishop)
+                {
+                    if (Physics.Raycast(new Vector3(1, 1, selectUnit.transform.position.z - 1), Vector3.down, out RaycastHit hhh, 3f))
+                    {
+                        if (hhh.collider.tag == "Tile") selectUnit.GetComponent<Units>().WarpMove(hhh.collider.transform.position);
+                    }
+                }
+                else
+                {
+                    if (Physics.Raycast(selectUnit.transform.position + new Vector3(1, 1, -1), Vector3.down, out RaycastHit hhh, 3f))
+                    {
+                        if (hhh.collider.tag == "Tile") unitMove(1, -1);
+                    }
+                }
             }
             else if (Input.GetKeyDown(KeyCode.Keypad7))
             {
-                unitMove(-1, 1);
+                if (selectUnit.GetComponent<Units>().warp && selectUnit.transform.position.x <= 1.1 && selectUnit.GetComponent<Units>().bishop)
+                {
+                    if (Physics.Raycast(new Vector3(mapMaxX, 1, selectUnit.transform.position.z + 1), Vector3.down, out RaycastHit hhh, 3f))
+                    {
+                        if (hhh.collider.tag == "Tile") selectUnit.GetComponent<Units>().WarpMove(hhh.collider.transform.position);
+                    }
+                }
+                else
+                {
+                    if (Physics.Raycast(selectUnit.transform.position + new Vector3(-1, 1, 1), Vector3.down, out RaycastHit hhh, 3f))
+                    {
+                        if (hhh.collider.tag == "Tile") unitMove(-1, 1);
+                    }
+                }
             }
             else if (Input.GetKeyDown(KeyCode.Keypad9))
             {
-                unitMove(1, 1);
+                if (selectUnit.GetComponent<Units>().warp && selectUnit.transform.position.x >= mapMaxX - 0.1 && selectUnit.GetComponent<Units>().bishop)
+                {
+                    if (Physics.Raycast(new Vector3(1, 1, selectUnit.transform.position.z + 1), Vector3.down, out RaycastHit hhh, 3f))
+                    {
+                        if (hhh.collider.tag == "Tile") selectUnit.GetComponent<Units>().WarpMove(hhh.collider.transform.position);
+                    }
+                }
+                else
+                {
+                    if (Physics.Raycast(selectUnit.transform.position + new Vector3(1, 1, 1), Vector3.down, out RaycastHit hhh, 3f))
+                    {
+                        if (hhh.collider.tag == "Tile") unitMove(1, 1);
+                    }
+                }
             }
-
-            //if (placementTime && Input.GetMouseButton(0))
-            //{ 
-            //}
         }
-        else if(!canMove)
-        { Debug.Log("canMove is false"); }
 
         //턴 시간 제한
         if (playerTurn && !placementTime)
@@ -282,10 +385,12 @@ public class GameMgr : MonoBehaviour
         {
             GameObject fU = Instantiate(friendlyBass);
             Dictionary<string, object> Dict = libmgr.unitCode[libmgr.playerUnitsData[i][0]];
+            Dictionary<string, object> DictEffect = libmgr.unitCodeEffects[libmgr.playerUnitsData[i][0]];
             fU.name = Dict["Name"].ToString();
             fU.transform.position = new Vector3(i, 3, 2);
 
             Units fUFun = fU.GetComponent<Units>();
+            fUFun.myCodeNum = libmgr.playerUnitsData[i][0];
             fUFun.upgradeRank = (int)libmgr.playerUnitsData[i][1];
             fUFun.moveCountUpgrade = Convert.ToSingle(Dict["이동횟수 강화"]);
             fUFun.minNumUpgrade = Convert.ToSingle(Dict["숫자 최소치 강화"]);
@@ -293,6 +398,31 @@ public class GameMgr : MonoBehaviour
             fUFun.moveMaxCount = (int)Dict["이동 횟수"] + (int)fUFun.moveCountUpgrade *fUFun.upgradeRank;
             fUFun.minNum = (int)Dict["숫자 최소치"] + (int)fUFun.minNumUpgrade *fUFun.upgradeRank;
             fUFun.maxNum = (int)Dict["숫자 최대치"] + (int)fUFun.maxNumUpgrade *fUFun.upgradeRank;
+
+            if (Convert.ToString(DictEffect["좌우 워프"]) == "TRUE") fUFun.warp = true;
+            if (Convert.ToString(DictEffect["전방향 전투"]) == "TRUE") fUFun.attackEvery = true;
+            if (Convert.ToString(DictEffect["위치 교체"]) == "TRUE") fUFun.changePos = true;
+            if (Convert.ToString(DictEffect["공격시 상대 숫자 변동"]) != "")
+                fUFun.attackMinusPow = Convert.ToInt32(DictEffect["공격시 상대 숫자 변동"]);
+            if (Convert.ToString(DictEffect["자신 숫자 변동"]) != "")
+                fUFun.morePower = Convert.ToInt32(DictEffect["자신 숫자 변동"]);
+            if (Convert.ToString(DictEffect["죽으면 패배"]) == "TRUE") fUFun.playerHeart = true;
+            if (Convert.ToString(DictEffect["홀수 차례만 효과"]) == "TRUE") fUFun.oddTurnEffect = true;
+            if (Convert.ToString(DictEffect["짝수 차례만 효과"]) == "TRUE") fUFun.evenTurnEffect = true;
+            if (Convert.ToString(DictEffect["위치 고정"]) == "TRUE") fUFun.cantMove = true;
+            if (Convert.ToString(DictEffect["상대 진영 끝에 도달하면 강화(뒤집기)"]) != "")
+                fUFun.upgradeCode = DictEffect["상대 진영 끝에 도달하면 강화(뒤집기)"];
+            if (Convert.ToString(DictEffect["대각선만 이동"]) == "TRUE") {fUFun.bishop = true; fUFun.rook = false;}
+            if (Convert.ToString(DictEffect["전방위 이동"]) == "TRUE") { fUFun.bishop = true; fUFun.rook = true;}
+            if (Convert.ToString(DictEffect["자신 진영에서만 이동 가능"]) == "TRUE") fUFun.onlyMyPlace = true;
+            if (Convert.ToString(DictEffect["중립진영에 배치"]) == "TRUE") fUFun.placeAnywhere = true;
+            if (Convert.ToString(DictEffect["못 움직임 사망시"]) == "TRUE") fUFun.poision = true;
+            if (Convert.ToString(DictEffect["숫자 범위 변하지 않음"]) == "TRUE") fUFun.cristalBody = true;
+            if (Convert.ToString(DictEffect["뒤로 이동 불가"]) == "TRUE") fUFun.pawn = true;
+            if (Convert.ToString(DictEffect["차례 종료시 랜덤 이동"]) == "TRUE") fUFun.randomMove = true;
+            if (Convert.ToString(DictEffect["다른 아군 숫자 변동"]) != "")
+                fUFun.powerUpTotem = Convert.ToInt32(DictEffect["다른 아군 숫자 변동"]);
+            if (Convert.ToString(DictEffect["못 움직임 이동 대신"]) == "TRUE") fUFun.frozen = true;
 
             fUFun.wakeUpUnit();
             playerUnits.Add(fU);
@@ -370,16 +500,12 @@ public class GameMgr : MonoBehaviour
     //보스 생성
     public IEnumerator makeEnermyUnits()
     {
-        Debug.Log(0);
-
         GameObject BossfU = Instantiate(bossBass);
         Dictionary<string, object> DictBoss = libmgr.unitCode[libmgr.bossToMeet[libmgr.stageLevelCount][0]];
         BossfU.name = DictBoss["Name"].ToString();
         BossfU.GetComponent<Units>().wakeUpUnit();
         BossfU.transform.position = new Vector3(mapMaxX+3, 3, mapMaxZ + 1);
         enermyUnits.Add(BossfU);
-
-        Debug.Log(1);
 
         yield return null;
 
@@ -400,8 +526,6 @@ public class GameMgr : MonoBehaviour
             fUFun.moveMaxCount = (int)Dict["이동 횟수"] + (int)fUFun.moveCountUpgrade * fUFun.upgradeRank;
             fUFun.minNum = (int)Dict["숫자 최소치"] + (int)fUFun.minNumUpgrade * fUFun.upgradeRank;
             fUFun.maxNum = (int)Dict["숫자 최대치"] + (int)fUFun.maxNumUpgrade * fUFun.upgradeRank;
-
-            Debug.Log(2);
 
             fUFun.wakeUpUnit();
             enermyUnits.Add(fU);
@@ -495,26 +619,18 @@ public class GameMgr : MonoBehaviour
             }
             else
             {
-                Debug.Log(4);
-
                 int rnd = UnityEngine.Random.Range(1, mapMaxX + 1);
                 int rnd2 = UnityEngine.Random.Range(0, friendlyZone);
                 Vector3 upUnitPlace = new Vector3(rnd, 10, mapMaxZ - rnd2);
                 if (Physics.Raycast(upUnitPlace, Vector3.down, out RaycastHit hit, 15f))
                 {
-                    Debug.DrawRay(upUnitPlace, Vector3.down * 15, Color.red, 10f);
                     if (hit.collider.tag == "Tile")
                     {
-                        Debug.Log(enermyUnits[0].transform.position);
-                        Debug.Log(hit.collider);
-                        Debug.Log(hit.collider.transform.position);
                         enermyUnits[enermyPlaceCount].GetComponent<Units>().placeMove(new Vector3(rnd, enermyUnits[enermyPlaceCount].transform.position.y, mapMaxZ - rnd2));
                         luckCount = 0;
                     }
                     else
                     {
-                        Debug.Log("p2");
-                        Debug.Log(hit.collider);
                         k--;
                         enermyPlaceCount--;
                         luckCount++;
@@ -529,4 +645,90 @@ public class GameMgr : MonoBehaviour
             }
         }
     }
+
+    //전투
+    public IEnumerator fighting(GameObject a, GameObject b)
+    {
+        if (a == playerUnits[0] || b == enermyUnits[0])
+        {
+            if (a == playerUnits[0] && b == enermyUnits[0])
+            {}
+            else if (a == playerUnits[0] && !b == enermyUnits[0])
+            {
+                lose = true;
+                losePanel.SetActive(true);
+            }
+            else
+            {
+                if (libmgr.stageLevelCount == 6)
+                {
+                    win = true;
+                    Application.Quit();
+                }
+                else
+                {
+                    win = true;
+                    libmgr.money += 100 * libmgr.stageLevelCount;
+                    winPanel.SetActive(true);
+                }
+            }
+        }
+        else
+        {
+            FightPanel.SetActive(true);
+            playerdiceTxt.text = "?";
+            enermydiceTxt.text = "?";
+            yield return new WaitForSecondsRealtime(1f);
+            int aRnd = UnityEngine.Random.Range(a.GetComponent<Units>().minNum, a.GetComponent<Units>().maxNum + 1);
+            playerdiceTxt.text = aRnd.ToString();
+            int bRnd = UnityEngine.Random.Range(b.GetComponent<Units>().minNum, b.GetComponent<Units>().maxNum + 1);
+            enermydiceTxt.text = bRnd.ToString();
+            yield return new WaitForSecondsRealtime(2f);
+            //플레이어 유닛 승리
+            if (aRnd > bRnd)
+            {
+                Destroy(b);
+                enermyUnits.Remove(b);
+                a.GetComponent<Units>().maxNum -= bRnd;
+                a.GetComponent<Units>().minNum -= bRnd;
+                if (a.GetComponent<Units>().minNum < 0)
+                { a.GetComponent<Units>().minNum = 0; }
+            }
+            //에너미 유닛 승리
+            else if (bRnd > aRnd)
+            {
+                if (a.GetComponent<Units>().moveAble) turnMove++;
+
+                Destroy(a);
+                playerUnits.Remove(a);
+                var targetUnitData = libmgr.playerUnitsData.Find(unitData => unitData[0] == a.GetComponent<Units>().myCodeNum &&
+                Convert.ToInt32(unitData[1]) == a.GetComponent<Units>().upgradeRank);
+                if (targetUnitData != null)
+                {
+                    libmgr.playerUnitsData.Remove(targetUnitData);
+                }
+                b.GetComponent<Units>().maxNum -= aRnd;
+                b.GetComponent<Units>().minNum -= aRnd;
+                if (b.GetComponent<Units>().minNum < 0)
+                { b.GetComponent<Units>().minNum = 0; }               
+            }
+            //무승부 양자 파괴
+            else
+            {              
+                Destroy(a);
+                var targetUnitData = libmgr.playerUnitsData.Find(unitData => unitData[0] == a.GetComponent<Units>().myCodeNum &&
+                Convert.ToInt32(unitData[1]) == a.GetComponent<Units>().upgradeRank);
+                if (targetUnitData != null)
+                {
+                    libmgr.playerUnitsData.Remove(targetUnitData);
+                }
+                Destroy(b);
+                playerUnits.Remove(a);
+                enermyUnits.Remove(b);      
+            }
+            FightPanel.SetActive(false);
+        }
+    }
+
+    //뒤집기
 }
