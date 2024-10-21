@@ -55,6 +55,9 @@ public class GameMgr : MonoBehaviour
     public bool win = false;
     public GameObject losePanel;
     public bool lose = false;
+
+    public GameObject move1EnermyAi;
+    public GameObject targetPlayerUnit1Ai;
     void Start()
     {
         StartCoroutine(gmrStartCorou());
@@ -359,13 +362,15 @@ public class GameMgr : MonoBehaviour
         // 턴 종료시 버튼 클릭
         if(playerTurn && !placementTime)
         {
-            canMove = false;
             gmrUi.whosTurnTxtChange();
             turnTime = 0;
             playerTurn = false;
             turnMove = 0;
             selectOn = false;
             gmrUi.moveCountTxtChange(turnMaxMove - turnMove);
+            enermyUnits.ForEach(unit => unit.GetComponent<Units>().moveAble = true);
+            enermyUnits.ForEach(unit => unit.GetComponent<Units>().moveCount = 0);
+            StartCoroutine(bossAi());
         }
     }
     
@@ -730,5 +735,562 @@ public class GameMgr : MonoBehaviour
         }
     }
 
+
+    public IEnumerator bossAi()
+    {
+        findEnermyAndPlayer();
+        yield return new WaitForSecondsRealtime(1f);
+        float AiDistX = move1EnermyAi.transform.position.x - targetPlayerUnit1Ai.transform.position.x;
+        float AiDistZ = move1EnermyAi.transform.position.z - targetPlayerUnit1Ai.transform.position.z;
+        if (move1EnermyAi.GetComponent<Units>().halfNum >= targetPlayerUnit1Ai.GetComponent<Units>().halfNum)
+        {
+            if (move1EnermyAi.GetComponent<Units>().pawn)
+            {
+                //퀸
+                if (move1EnermyAi.GetComponent<Units>().rook && move1EnermyAi.GetComponent<Units>().bishop)
+                {
+                    if (AiDistX > 0.1 && AiDistZ > 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
+                    }
+                    else if (AiDistX > 0.1 && AiDistZ < -0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                    }
+                    else if (AiDistX < -0.1 && AiDistZ > 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
+                    }
+                    else if (AiDistX < -0.1 && AiDistZ < -0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                    }
+                    else if (Mathf.Abs(AiDistX) <= 0.1 && AiDistZ > 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                    }
+                    else if (AiDistX > 0.1 && Mathf.Abs(AiDistZ) <= 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                    }
+                    else if (AiDistX < -0.1 && Mathf.Abs(AiDistZ) <= 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                    }
+                    else { move1EnermyAi.GetComponent<Units>().moveAble = false; }
+                }
+                //비숍
+                else if (!move1EnermyAi.GetComponent<Units>().rook && move1EnermyAi.GetComponent<Units>().bishop)
+                {
+                    if (AiDistX > 0.1 && AiDistZ > 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
+                    }
+                    else if (AiDistX > 0.1 && AiDistZ < -0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                    }
+                    else if (AiDistX < -0.1 && AiDistZ > 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
+                    }
+                    else if (AiDistX < -0.1 && AiDistZ < -0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                    }
+                    else if (Mathf.Abs(AiDistX) <= 0.1 && AiDistZ > 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                    }
+                    else if (AiDistX > 0.1 && Mathf.Abs(AiDistZ) <= 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                    }
+                    else if (AiDistX < -0.1 && Mathf.Abs(AiDistZ) <= 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                    }
+                    else { move1EnermyAi.GetComponent<Units>().moveAble = false; }
+                }
+                //룩
+                else if (move1EnermyAi.GetComponent<Units>().rook && !move1EnermyAi.GetComponent<Units>().bishop)
+                {
+                    if (AiDistX > 0.1 && AiDistZ > 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
+                    }
+                    else if (AiDistX > 0.1 && AiDistZ < -0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                    }
+                    else if (AiDistX < -0.1 && AiDistZ > 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
+                    }
+                    else if (AiDistX < -0.1 && AiDistZ < -0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                    }
+                    else if (Mathf.Abs(AiDistX) <= 0.1 && AiDistZ > 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                    }
+                    else if (AiDistX > 0.1 && Mathf.Abs(AiDistZ) <= 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                    }
+                    else if (AiDistX < -0.1 && Mathf.Abs(AiDistZ) <= 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                    }
+                    else { move1EnermyAi.GetComponent<Units>().moveAble = false; }
+                }
+            }
+            else
+            {
+                //퀸
+                if (move1EnermyAi.GetComponent<Units>().rook && move1EnermyAi.GetComponent<Units>().bishop)
+                {
+                    if (AiDistX > 0.1 && AiDistZ > 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
+                    }
+                    else if (AiDistX > 0.1 && AiDistZ < -0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                    }
+                    else if (AiDistX < -0.1 && AiDistZ > 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
+                    }
+                    else if (AiDistX < -0.1 && AiDistZ < -0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                    }
+                    else if (Mathf.Abs(AiDistX) <= 0.1 && AiDistZ > 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                    }
+                    else if (AiDistX > 0.1 && Mathf.Abs(AiDistZ) <= 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                    }
+                    else if (AiDistX < -0.1 && Mathf.Abs(AiDistZ) <= 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                    }
+                    else { move1EnermyAi.GetComponent<Units>().moveAble = false; }
+                }
+                //비숍
+                else if (!move1EnermyAi.GetComponent<Units>().rook && move1EnermyAi.GetComponent<Units>().bishop)
+                {
+                    if (AiDistX > 0.1 && AiDistZ > 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
+                    }
+                    else if (AiDistX > 0.1 && AiDistZ < -0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                    }
+                    else if (AiDistX < -0.1 && AiDistZ > 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
+                    }
+                    else if (AiDistX < -0.1 && AiDistZ < -0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                    }
+                    else if (Mathf.Abs(AiDistX) <= 0.1 && AiDistZ > 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                    }
+                    else if (AiDistX > 0.1 && Mathf.Abs(AiDistZ) <= 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                    }
+                    else if (AiDistX < -0.1 && Mathf.Abs(AiDistZ) <= 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                    }
+                    else { move1EnermyAi.GetComponent<Units>().moveAble = false; }
+                }
+                //룩
+                else if (move1EnermyAi.GetComponent<Units>().rook && !move1EnermyAi.GetComponent<Units>().bishop)
+                {
+                    if (AiDistX > 0.1 && AiDistZ > 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
+                    }
+                    else if (AiDistX > 0.1 && AiDistZ < -0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                    }
+                    else if (AiDistX < -0.1 && AiDistZ > 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
+                    }
+                    else if (AiDistX < -0.1 && AiDistZ < -0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                    }
+                    else if (Mathf.Abs(AiDistX) <= 0.1 && AiDistZ > 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                    }
+                    else if (AiDistX > 0.1 && Mathf.Abs(AiDistZ) <= 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                    }
+                    else if (AiDistX < -0.1 && Mathf.Abs(AiDistZ) <= 0.1)
+                    {
+                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                    }
+                    else { move1EnermyAi.GetComponent<Units>().moveAble = false; }
+                }
+            }
+        }
+
+        if (move1EnermyAi.GetComponent<Units>().moveCount < move1EnermyAi.GetComponent<Units>().moveMaxCount)
+        {
+            findEnermyAndPlayer();
+            yield return null;
+            StartCoroutine(bossAi());
+        }
+        else if (turnMove < turnMaxMove)
+        {
+            findEnermyAndPlayer();
+            yield return null;
+            StartCoroutine(bossAi());
+        }
+        else if (turnMove >= turnMaxMove)
+        {
+            canMove = true;
+            gmrUi.whosTurnTxtChange();
+            turnTime = 0;
+            playerTurn = true;
+            turnMove = 0;
+            selectOn = false;
+            gmrUi.moveCountTxtChange(turnMaxMove - turnMove);
+            playerUnits.ForEach(unit => unit.GetComponent<Units>().moveAble = true);
+            playerUnits.ForEach(unit => unit.GetComponent<Units>().moveCount = 0);
+        }
+    }
+
+    // AI 유닛 세팅
+    void findEnermyAndPlayer()
+    {
+        for (int i = 0; i < enermyUnits.Count; i++)
+        {
+            if (!enermyUnits[i].GetComponent<Units>().moveAble)
+            { }
+            else
+            {
+                if (enermyUnits[i].GetComponent<Units>().attackEvery)
+                {
+                    if (Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[0].transform.position.x) <= 2.1
+                    && Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[0].transform.position.z) <= 2.1
+                    && enermyUnits[i].GetComponent<Units>().rook && Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[0].transform.position.x)
+                    + Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[0].transform.position.z) <= 3.1)
+                    {
+                        if (enermyUnits[i].GetComponent<Units>().pawn)
+                        {
+                            if (playerUnits[0].transform.position.z - enermyUnits[i].transform.position.z >= -1)
+                            {
+                                move1EnermyAi = enermyUnits[i];
+                                targetPlayerUnit1Ai = playerUnits[0];
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            move1EnermyAi = enermyUnits[i];
+                            targetPlayerUnit1Ai = playerUnits[0];
+                            break;
+                        }
+                    }
+                    else if (Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[0].transform.position.x)
+                    + Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[0].transform.position.z) <= 4.1
+                    && enermyUnits[i].GetComponent<Units>().bishop)
+                    {
+                        if (Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[0].transform.position.x)
+                            - Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[0].transform.position.z) < 0.1)
+                        {
+                            for (int j = 1; j < playerUnits.Count; j++)
+                            {
+                                if (Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[0].transform.position.x) >= Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[j].transform.position.x)
+                              && Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[0].transform.position.z) >= Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[j].transform.position.z))
+                                {
+                                    if (playerUnits[0].transform.position.x - playerUnits[j].transform.position.x <= 1.1 && playerUnits[0].transform.position.z - playerUnits[j].transform.position.z <= 1.1)
+                                    { }
+                                    else
+                                    {
+                                        if (enermyUnits[i].GetComponent<Units>().pawn)
+                                        {
+                                            if (playerUnits[0].transform.position.z - enermyUnits[i].transform.position.z <= 1)
+                                            {
+                                                move1EnermyAi = enermyUnits[i];
+                                                targetPlayerUnit1Ai = playerUnits[0];
+                                                break;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            move1EnermyAi = enermyUnits[i];
+                                            targetPlayerUnit1Ai = playerUnits[0];
+                                            break;
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    if (enermyUnits[i].GetComponent<Units>().pawn)
+                                    {
+                                        if (playerUnits[0].transform.position.z - enermyUnits[i].transform.position.z <= 1)
+                                        {
+                                            move1EnermyAi = enermyUnits[i];
+                                            targetPlayerUnit1Ai = playerUnits[0];
+                                            break;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        move1EnermyAi = enermyUnits[i];
+                                        targetPlayerUnit1Ai = playerUnits[0];
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            for (int j = 1; j < playerUnits.Count; j++)
+                            {
+                                if (Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[0].transform.position.x) >= Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[j].transform.position.x)
+                              && Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[0].transform.position.z) >= Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[j].transform.position.z))
+                                {
+                                    if (playerUnits[0].transform.position.x - playerUnits[j].transform.position.x <= 1.1 && playerUnits[0].transform.position.z - playerUnits[j].transform.position.z <= 1.1)
+                                    { }
+                                    else
+                                    {
+                                        if (enermyUnits[i].GetComponent<Units>().pawn)
+                                        {
+                                            if (playerUnits[0].transform.position.z - enermyUnits[i].transform.position.z <= 1)
+                                            {
+                                                move1EnermyAi = enermyUnits[i];
+                                                targetPlayerUnit1Ai = playerUnits[0];
+                                                break;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            move1EnermyAi = enermyUnits[i];
+                                            targetPlayerUnit1Ai = playerUnits[0];
+                                            break;
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    if (enermyUnits[i].GetComponent<Units>().pawn)
+                                    {
+                                        if (playerUnits[0].transform.position.z - enermyUnits[i].transform.position.z <= 1)
+                                        {
+                                            move1EnermyAi = enermyUnits[i];
+                                            targetPlayerUnit1Ai = playerUnits[0];
+                                            break;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        move1EnermyAi = enermyUnits[i];
+                                        targetPlayerUnit1Ai = playerUnits[0];
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                }
+                else
+                { 
+                    if (Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[0].transform.position.x) <= 1.1
+                    && Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[0].transform.position.z) <= 1.1
+                    && enermyUnits[i].GetComponent<Units>().rook)
+                    {
+                        if (enermyUnits[i].GetComponent<Units>().pawn)
+                        {
+                            if (playerUnits[0].transform.position.z - enermyUnits[i].transform.position.z <= -1)
+                            {
+                                move1EnermyAi = enermyUnits[i];
+                                targetPlayerUnit1Ai = playerUnits[0];
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            move1EnermyAi = enermyUnits[i];
+                            targetPlayerUnit1Ai = playerUnits[0];
+                            break;
+                        }
+                    }
+                    else if (Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[0].transform.position.x)
+                    + Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[0].transform.position.z) <= 3.1
+                    && enermyUnits[i].GetComponent<Units>().bishop)
+                    {
+                        if (Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[0].transform.position.x)
+                   - Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[0].transform.position.z) < 0.1)
+                        { }
+                        else
+                        {
+                            for (int j = 1; j < playerUnits.Count; j++)
+                            {
+                                if (Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[0].transform.position.x) >= Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[j].transform.position.x)
+                              && Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[0].transform.position.z) >= Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[j].transform.position.z))
+                                {
+                                    if (enermyUnits[i].GetComponent<Units>().pawn)
+                                    {
+                                        if (playerUnits[0].transform.position.z - enermyUnits[i].transform.position.z <= 1)
+                                        {
+                                            move1EnermyAi = enermyUnits[i];
+                                            targetPlayerUnit1Ai = playerUnits[0];
+                                            break;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        move1EnermyAi = enermyUnits[i];
+                                        targetPlayerUnit1Ai = playerUnits[0];
+                                        break;
+                                    }         
+                                }
+                                else
+                                {
+                                    if (enermyUnits[i].GetComponent<Units>().pawn)
+                                    {
+                                        if (playerUnits[0].transform.position.z - enermyUnits[i].transform.position.z <= 1)
+                                        {
+                                            move1EnermyAi = enermyUnits[i];
+                                            targetPlayerUnit1Ai = playerUnits[0];
+                                            break;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        move1EnermyAi = enermyUnits[i];
+                                        targetPlayerUnit1Ai = playerUnits[0];
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+           
+            
+                for (int j = 0; j < playerUnits.Count; j++)
+                {
+                    if (move1EnermyAi == null)
+                    {
+                        move1EnermyAi = enermyUnits[i];
+                        targetPlayerUnit1Ai = playerUnits[j];
+                    }
+                    else
+                    {
+
+                        if (Mathf.Abs(move1EnermyAi.transform.position.x - playerUnits[0].transform.position.x)
+                    + Mathf.Abs(move1EnermyAi.transform.position.z - playerUnits[0].transform.position.z) - move1EnermyAi.GetComponent<Units>().moveMaxCount >
+                            Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[0].transform.position.x)
+                    + Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[0].transform.position.z)
+                        && enermyUnits[i].GetComponent<Units>().rook)
+                        {
+                            if (enermyUnits[i].GetComponent<Units>().pawn)
+                            {
+                                if (playerUnits[0].transform.position.z - enermyUnits[i].transform.position.z <= -1)
+                                {
+                                    move1EnermyAi = enermyUnits[i];
+                                    targetPlayerUnit1Ai = playerUnits[0];
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                move1EnermyAi = enermyUnits[i];
+                                targetPlayerUnit1Ai = playerUnits[0];
+                                break;
+                            }
+                        }
+                        else if (Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[0].transform.position.x)
+                        + Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[0].transform.position.z) <= 3.1
+                        && enermyUnits[i].GetComponent<Units>().bishop)
+                        {
+                            if (Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[0].transform.position.x)
+                       - Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[0].transform.position.z) < 0.1)
+                            { }
+                            else
+                            {
+                                for (int p = 1; p < playerUnits.Count; p++)
+                                {
+                                    if (Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[0].transform.position.x) >= Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[p].transform.position.x)
+                                  && Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[0].transform.position.z) >= Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[p].transform.position.z))
+                                    {
+                                        if (playerUnits[0].transform.position.x - playerUnits[j].transform.position.x <= 1.1 && playerUnits[0].transform.position.z - playerUnits[j].transform.position.z <= 1.1)
+                                        { }
+                                        else
+                                        {
+                                            if (enermyUnits[i].GetComponent<Units>().pawn)
+                                            {
+                                                if (playerUnits[0].transform.position.z - enermyUnits[i].transform.position.z <= -1)
+                                                {
+                                                    move1EnermyAi = enermyUnits[i];
+                                                    targetPlayerUnit1Ai = playerUnits[0];
+                                                    break;
+                                                }
+                                            }
+                                            else
+                                            {
+                                                move1EnermyAi = enermyUnits[i];
+                                                targetPlayerUnit1Ai = playerUnits[0];
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        if (enermyUnits[i].GetComponent<Units>().pawn)
+                                        {
+                                            if (playerUnits[0].transform.position.z - enermyUnits[i].transform.position.z <= -1)
+                                            {
+                                                move1EnermyAi = enermyUnits[i];
+                                                targetPlayerUnit1Ai = playerUnits[0];
+                                                break;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            move1EnermyAi = enermyUnits[i];
+                                            targetPlayerUnit1Ai = playerUnits[0];
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        //기존 등록된것보다 플레이어 유닛에게 가까울 때
+                        if (Mathf.Abs(move1EnermyAi.transform.position.x - playerUnits[0].transform.position.x)
+                    + Mathf.Abs(move1EnermyAi.transform.position.z - playerUnits[0].transform.position.z) - move1EnermyAi.GetComponent<Units>().moveMaxCount >
+                            Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[0].transform.position.x)
+                    + Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[0].transform.position.z))
+                        {
+                            move1EnermyAi = enermyUnits[i];
+                            targetPlayerUnit1Ai = playerUnits[j];
+                        }
+                    }
+                }
+            }
+        }
+    }
     //뒤집기
 }
