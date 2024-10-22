@@ -7,6 +7,7 @@ using UnityEngine.UI;
 public class MenuMgr : MonoBehaviour
 {
     public GameObject CharacterSelectPanel;
+    public GameObject gameFlow;
     public LibMgr library;
 
     public int charNum = 100;
@@ -15,6 +16,7 @@ public class MenuMgr : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        gameFlow = GameObject.Find("GameFlow");
         library = GameObject.Find("LibMgr").GetComponent<LibMgr>();
         charNum = 100;
     }

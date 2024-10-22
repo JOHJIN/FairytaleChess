@@ -13,9 +13,6 @@ public class GameFlow : MonoBehaviour
     {
         libmgr = GameObject.Find("LibMgr");
         libmgr.GetComponent<LibMgr>().gameflow = GetComponent<GameFlow>();
-
-        Debug.Log(Convert.ToInt32(libmgr.GetComponent<LibMgr>().normalUnits[1]["øµ¿‘ »Ò±Õµµ"]));
-        if (Convert.ToInt32(libmgr.GetComponent<LibMgr>().normalUnits[1]["øµ¿‘ »Ò±Õµµ"]) == 5) Debug.Log("dddddd");
     }
 
     void Update()

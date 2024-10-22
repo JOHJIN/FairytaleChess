@@ -5,12 +5,14 @@ using System.Linq;
 using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.UIElements;
+using UnityEngine.UI;
 
 public class Units : MonoBehaviour
 {
     public object myCodeNum;
     public object upgradeCode;
+
+    public String unitEffectTxt;
 
     public int moveCount = 0;
     public int moveMaxCount = 1;
@@ -126,7 +128,9 @@ public class Units : MonoBehaviour
             {
                 if (rook)
                 {
-                    if (pawn && Destination.z == -1)
+                    if (pawn && Destination.z == -1 && gmr.playerUnits.Any(unit => unit.gameObject == this.gameObject))
+                        return;
+                    else if (pawn && Destination.z == 1 && gmr.enermyUnits.Any(unit => unit.gameObject == this.gameObject))
                         return;
                     moveSmooth = true;
                     UnitVec = transform.position + Destination;
@@ -152,7 +156,9 @@ public class Units : MonoBehaviour
             {
                 if (bishop)
                 {
-                    if (pawn && Destination.z == -1)
+                    if (pawn && Destination.z == -1 && gmr.playerUnits.Any(unit => unit.gameObject == this.gameObject))
+                        return;
+                    else if (pawn && Destination.z == 1 && gmr.enermyUnits.Any(unit => unit.gameObject == this.gameObject))
                         return;
 
                     UnitVec = transform.position + Destination;

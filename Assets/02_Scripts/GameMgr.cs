@@ -1,12 +1,14 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 using UnityEngine.UI;
+using static UnityEngine.UI.CanvasScaler;
 
 public class GameMgr : MonoBehaviour
 {
@@ -58,9 +60,15 @@ public class GameMgr : MonoBehaviour
 
     public GameObject move1EnermyAi;
     public GameObject targetPlayerUnit1Ai;
+
+    public bool AiTurn = false;
+    public bool aiSelect = false;
+    float aiTime = 0;
+    public int bosstype = 0;
     void Start()
     {
         StartCoroutine(gmrStartCorou());
+        bosstype = UnityEngine.Random.Range(-1, 2);
     }
 
     void Update()
@@ -190,7 +198,7 @@ public class GameMgr : MonoBehaviour
                             }
                         }
                         else
-                        { Debug.Log("canMove is false"); }
+                        {}
                     }                  
                     else
                     {
@@ -334,12 +342,86 @@ public class GameMgr : MonoBehaviour
             turnTime += Time.deltaTime;
             if (turnTime >= 120f)
             {
+                canMove = true;
                 gmrUi.whosTurnTxtChange();
                 playerTurn = false;
                 turnMove = 0;
                 selectOn = false;
                 turnTime = 0;
                 gmrUi.moveCountTxtChange(turnMaxMove - turnMove);
+                enermyUnits.ForEach(unit => unit.GetComponent<Units>().moveAble = true);
+                enermyUnits.ForEach(unit => unit.GetComponent<Units>().moveCount = 0);
+                AiTurn = true;
+                move1EnermyAi = null;
+                aiSelect = false;
+            }
+        }
+        else if(!playerTurn && !placementTime)
+        {
+            turnTime += Time.deltaTime;
+            if (turnTime >= 20f)
+            {
+                canMove = true;
+                gmrUi.whosTurnTxtChange();
+                playerTurn = true;
+                turnMove = 0;
+                selectOn = false;
+                turnTime = 0;
+                gmrUi.moveCountTxtChange(turnMaxMove - turnMove);
+                playerUnits.ForEach(unit => unit.GetComponent<Units>().moveAble = true);
+                playerUnits.ForEach(unit => unit.GetComponent<Units>().moveCount = 0);
+                AiTurn = false;
+                move1EnermyAi = null;
+                aiSelect = false;
+            }
+        }
+
+        if (AiTurn)
+        {
+            aiTime += Time.deltaTime;
+
+            if (aiTime >= 0.5f)
+            {
+                if (!aiSelect)
+                    findEnermyAndPlayer();
+                else if (aiSelect)
+                {
+                    if (move1EnermyAi == null)
+                    {
+                        aiSelect = false;
+                    }
+                    else bossAi();
+                }
+                aiTime = 0;
+            }
+
+            if(!enermyUnits.Any(unit => unit.GetComponent<Units>().moveAble))
+            {
+                canMove = true;
+                gmrUi.whosTurnTxtChange();
+                turnTime = 0;
+                playerTurn = true;
+                turnMove = 0;
+                selectOn = false;
+                gmrUi.moveCountTxtChange(turnMaxMove - turnMove);
+                playerUnits.ForEach(unit => unit.GetComponent<Units>().moveAble = true);
+                playerUnits.ForEach(unit => unit.GetComponent<Units>().moveCount = 0);
+                AiTurn = false;
+                move1EnermyAi = null;
+                aiSelect = false;
+            }
+            if (turnMove >= turnMaxMove)
+            {
+                canMove = true;
+                gmrUi.whosTurnTxtChange();
+                turnTime = 0;
+                playerTurn = true;
+                turnMove = 0;
+                selectOn = false;
+                gmrUi.moveCountTxtChange(turnMaxMove - turnMove);
+                playerUnits.ForEach(unit => unit.GetComponent<Units>().moveAble = true);
+                playerUnits.ForEach(unit => unit.GetComponent<Units>().moveCount = 0);
+                AiTurn = false;
             }
         }
     }
@@ -370,7 +452,10 @@ public class GameMgr : MonoBehaviour
             gmrUi.moveCountTxtChange(turnMaxMove - turnMove);
             enermyUnits.ForEach(unit => unit.GetComponent<Units>().moveAble = true);
             enermyUnits.ForEach(unit => unit.GetComponent<Units>().moveCount = 0);
-            StartCoroutine(bossAi());
+            AiTurn = true;
+            canMove = true;
+            move1EnermyAi = null;
+            aiSelect = false;
         }
     }
     
@@ -384,13 +469,13 @@ public class GameMgr : MonoBehaviour
         p1.transform.position = new Vector3(0, 3, 2);
         p1.GetComponent<Units>().wakeUpUnit();
         p1.GetComponent<Units>().upgradeRank = (int)libmgr.playerUnitsData[0][1];
+        p1.GetComponent<Units>().unitEffectTxt = "플레이어";
         playerUnits.Add(p1);
 
         for (int i = 1; i < libmgr.playerUnitsData.Count; i++)
         {
             GameObject fU = Instantiate(friendlyBass);
             Dictionary<string, object> Dict = libmgr.unitCode[libmgr.playerUnitsData[i][0]];
-            Dictionary<string, object> DictEffect = libmgr.unitCodeEffects[libmgr.playerUnitsData[i][0]];
             fU.name = Dict["Name"].ToString();
             fU.transform.position = new Vector3(i, 3, 2);
 
@@ -404,30 +489,107 @@ public class GameMgr : MonoBehaviour
             fUFun.minNum = (int)Dict["숫자 최소치"] + (int)fUFun.minNumUpgrade *fUFun.upgradeRank;
             fUFun.maxNum = (int)Dict["숫자 최대치"] + (int)fUFun.maxNumUpgrade *fUFun.upgradeRank;
 
-            if (Convert.ToString(DictEffect["좌우 워프"]) == "TRUE") fUFun.warp = true;
-            if (Convert.ToString(DictEffect["전방향 전투"]) == "TRUE") fUFun.attackEvery = true;
-            if (Convert.ToString(DictEffect["위치 교체"]) == "TRUE") fUFun.changePos = true;
+            Dictionary<string, object> DictEffect = libmgr.unitCodeEffects[libmgr.playerUnitsData[i][0]];
+            if (Convert.ToString(DictEffect["대각선만 이동"]) == "TRUE") { fUFun.bishop = true; fUFun.rook = false; }
+            if (Convert.ToString(DictEffect["전방위 이동"]) == "TRUE") { fUFun.bishop = true; fUFun.rook = true; }
+
+            if (fUFun.rook && !fUFun.bishop)
+                fUFun.unitEffectTxt = "룩";
+            else if (!fUFun.rook && fUFun.bishop)
+                fUFun.unitEffectTxt = "비숍";
+            else if (fUFun.rook && fUFun.bishop)
+                fUFun.unitEffectTxt = "퀸";
+
+            if (Convert.ToString(DictEffect["뒤로 이동 불가"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += "폰";
+                fUFun.pawn = true;
+            }
+            if (Convert.ToString(DictEffect["홀수 차례만 효과"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 홀수 차례";
+                fUFun.oddTurnEffect = true;
+            }
+            if (Convert.ToString(DictEffect["짝수 차례만 효과"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 짝수 차례";
+                fUFun.evenTurnEffect = true;
+            }
+            if (Convert.ToString(DictEffect["좌우 워프"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 워프";
+                fUFun.warp = true;
+            }
+            if (Convert.ToString(DictEffect["전방향 전투"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 전방향 전투";
+                fUFun.attackEvery = true;
+            }
+            if (Convert.ToString(DictEffect["위치 교체"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 교대";
+                fUFun.changePos = true;
+            }
             if (Convert.ToString(DictEffect["공격시 상대 숫자 변동"]) != "")
+            {
+                fUFun.unitEffectTxt += ", 저주";
                 fUFun.attackMinusPow = Convert.ToInt32(DictEffect["공격시 상대 숫자 변동"]);
+            }
             if (Convert.ToString(DictEffect["자신 숫자 변동"]) != "")
+            {
+                fUFun.unitEffectTxt += ", 축복";
                 fUFun.morePower = Convert.ToInt32(DictEffect["자신 숫자 변동"]);
-            if (Convert.ToString(DictEffect["죽으면 패배"]) == "TRUE") fUFun.playerHeart = true;
-            if (Convert.ToString(DictEffect["홀수 차례만 효과"]) == "TRUE") fUFun.oddTurnEffect = true;
-            if (Convert.ToString(DictEffect["짝수 차례만 효과"]) == "TRUE") fUFun.evenTurnEffect = true;
-            if (Convert.ToString(DictEffect["위치 고정"]) == "TRUE") fUFun.cantMove = true;
+            }
+            if (Convert.ToString(DictEffect["죽으면 패배"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 심장";
+                fUFun.playerHeart = true;
+            }
+            if (Convert.ToString(DictEffect["위치 고정"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 이동 불가";
+                fUFun.cantMove = true;
+            }
             if (Convert.ToString(DictEffect["상대 진영 끝에 도달하면 강화(뒤집기)"]) != "")
+            {
+                fUFun.unitEffectTxt += ", 업그레이드";
                 fUFun.upgradeCode = DictEffect["상대 진영 끝에 도달하면 강화(뒤집기)"];
-            if (Convert.ToString(DictEffect["대각선만 이동"]) == "TRUE") {fUFun.bishop = true; fUFun.rook = false;}
-            if (Convert.ToString(DictEffect["전방위 이동"]) == "TRUE") { fUFun.bishop = true; fUFun.rook = true;}
-            if (Convert.ToString(DictEffect["자신 진영에서만 이동 가능"]) == "TRUE") fUFun.onlyMyPlace = true;
-            if (Convert.ToString(DictEffect["중립진영에 배치"]) == "TRUE") fUFun.placeAnywhere = true;
-            if (Convert.ToString(DictEffect["못 움직임 사망시"]) == "TRUE") fUFun.poision = true;
-            if (Convert.ToString(DictEffect["숫자 범위 변하지 않음"]) == "TRUE") fUFun.cristalBody = true;
-            if (Convert.ToString(DictEffect["뒤로 이동 불가"]) == "TRUE") fUFun.pawn = true;
-            if (Convert.ToString(DictEffect["차례 종료시 랜덤 이동"]) == "TRUE") fUFun.randomMove = true;
+            }
+            if (Convert.ToString(DictEffect["자신 진영에서만 이동 가능"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 士";
+                fUFun.onlyMyPlace = true;
+            }
+            if (Convert.ToString(DictEffect["중립진영에 배치"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 정찰병";
+                fUFun.placeAnywhere = true;
+            }
+            if (Convert.ToString(DictEffect["못 움직임 사망시"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 독";
+                fUFun.poision = true;
+            }
+            if (Convert.ToString(DictEffect["숫자 범위 변하지 않음"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 숫자 변동 없음";
+                fUFun.cristalBody = true;
+            }
+            if (Convert.ToString(DictEffect["차례 종료시 랜덤 이동"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 랜덤 이동";
+                fUFun.randomMove = true;
+            }
             if (Convert.ToString(DictEffect["다른 아군 숫자 변동"]) != "")
+            {
+                fUFun.unitEffectTxt += ", 아군 축복";
                 fUFun.powerUpTotem = Convert.ToInt32(DictEffect["다른 아군 숫자 변동"]);
-            if (Convert.ToString(DictEffect["못 움직임 이동 대신"]) == "TRUE") fUFun.frozen = true;
+            }
+            if (Convert.ToString(DictEffect["못 움직임 이동 대신"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 빙결";
+                fUFun.frozen = true;
+            }
 
             fUFun.wakeUpUnit();
             playerUnits.Add(fU);
@@ -441,16 +603,21 @@ public class GameMgr : MonoBehaviour
     //배치 종료후 플레이터 턴이 아닌 에너미 턴으로 넘어가는 오류 해결 위해서 코루틴으로 설정
     IEnumerator placementOverCorou()
     {
-        gmrUi.whosTurnTxtChange();
-        yield return null;
-        placementTime = false;
-        turnMove = 0;
-        turnTime = 0;
-        selectOn = false;
-        playerTurn = true;
-        canMove = true;
-        playerUnits.ForEach(pUnits => pUnits.GetComponent<Units>().moveAble = true); // 플레이어 유닛 전원 무브 가능 상태로 람다식
-        yield return new WaitForSecondsRealtime(0.5f);
+        if (playerUnits[0].transform.position.y < 1)
+        {
+            gmrUi.whosTurnTxtChange();
+            yield return null;
+            placementTime = false;
+            turnMove = 0;
+            turnTime = 0;
+            selectOn = false;
+            playerTurn = true;
+            canMove = true;
+            playerUnits.ForEach(pUnits => pUnits.GetComponent<Units>().moveAble = true); // 플레이어 유닛 전원 무브 가능 상태로 람다식
+            yield return new WaitForSecondsRealtime(0.5f);
+        }
+        else
+            yield return null;
     }
 
     //배치 종료후 배치 안한 유닛 파괴
@@ -487,16 +654,19 @@ public class GameMgr : MonoBehaviour
                 {
                     GameObject zTile = Instantiate(friendlyTiles, tileMap.transform);
                     zTile.transform.position = new Vector3(i, -0.5f, j);
+                    zTile.GetComponent<Renderer>().material.mainTexture = Resources.Load("Textures/playerTile_0") as Texture;
                 }
                 else if (j > mapMaxZ - friendlyZone)
                 {
                     GameObject zTile = Instantiate(enermyTiles, tileMap.transform);
                     zTile.transform.position = new Vector3(i, -0.5f, j);
+                    zTile.GetComponent<Renderer>().material.mainTexture = Resources.Load("Textures/enermyTile_" + 0) as Texture;
                 }
                 else
                 {
                     GameObject zTile = Instantiate(normalTiles, tileMap.transform);
                     zTile.transform.position = new Vector3(i, -0.5f, j);
+                    zTile.GetComponent<Renderer>().material.mainTexture = Resources.Load("Textures/normalTile_" + 0) as Texture;
                 }
             }
         }
@@ -510,6 +680,7 @@ public class GameMgr : MonoBehaviour
         BossfU.name = DictBoss["Name"].ToString();
         BossfU.GetComponent<Units>().wakeUpUnit();
         BossfU.transform.position = new Vector3(mapMaxX+3, 3, mapMaxZ + 1);
+        BossfU.GetComponent<Units>().unitEffectTxt = "보스";
         enermyUnits.Add(BossfU);
 
         yield return null;
@@ -524,6 +695,7 @@ public class GameMgr : MonoBehaviour
             fU.transform.position = new Vector3(mapMaxX-i+3, 3, mapMaxZ + 1);
 
             Units fUFun = fU.GetComponent<Units>();
+            fUFun.myCodeNum = DictFirst["기본"];
             fUFun.upgradeRank = libmgr.stageLevelCount;
             fUFun.moveCountUpgrade = Convert.ToSingle(Dict["이동횟수 강화"]);
             fUFun.minNumUpgrade = Convert.ToSingle(Dict["숫자 최소치 강화"]);
@@ -531,6 +703,108 @@ public class GameMgr : MonoBehaviour
             fUFun.moveMaxCount = (int)Dict["이동 횟수"] + (int)fUFun.moveCountUpgrade * fUFun.upgradeRank;
             fUFun.minNum = (int)Dict["숫자 최소치"] + (int)fUFun.minNumUpgrade * fUFun.upgradeRank;
             fUFun.maxNum = (int)Dict["숫자 최대치"] + (int)fUFun.maxNumUpgrade * fUFun.upgradeRank;
+
+            Dictionary<string, object> DictEffect = libmgr.unitCodeEffects[DictFirst["기본"]];
+            if (Convert.ToString(DictEffect["대각선만 이동"]) == "TRUE") { fUFun.bishop = true; fUFun.rook = false; }
+            if (Convert.ToString(DictEffect["전방위 이동"]) == "TRUE") { fUFun.bishop = true; fUFun.rook = true; }
+
+            if (fUFun.rook && !fUFun.bishop)
+                fUFun.unitEffectTxt = "룩";
+            else if (!fUFun.rook && fUFun.bishop)
+                fUFun.unitEffectTxt = "비숍";
+            else if (fUFun.rook && fUFun.bishop)
+                fUFun.unitEffectTxt = "퀸";
+
+            if (Convert.ToString(DictEffect["뒤로 이동 불가"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += "폰";
+                fUFun.pawn = true;
+            }
+            if (Convert.ToString(DictEffect["홀수 차례만 효과"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 홀수 차례";
+                fUFun.oddTurnEffect = true;
+            }
+            if (Convert.ToString(DictEffect["짝수 차례만 효과"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 짝수 차례";
+                fUFun.evenTurnEffect = true;
+            }
+            if (Convert.ToString(DictEffect["좌우 워프"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 워프";
+                fUFun.warp = true;
+            }
+            if (Convert.ToString(DictEffect["전방향 전투"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 전방향 전투";
+                fUFun.attackEvery = true;
+            }
+            if (Convert.ToString(DictEffect["위치 교체"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 교대";
+                fUFun.changePos = true;
+            }
+            if (Convert.ToString(DictEffect["공격시 상대 숫자 변동"]) != "")
+            {
+                fUFun.unitEffectTxt += ", 저주";
+                fUFun.attackMinusPow = Convert.ToInt32(DictEffect["공격시 상대 숫자 변동"]);
+            }
+            if (Convert.ToString(DictEffect["자신 숫자 변동"]) != "")
+            {
+                fUFun.unitEffectTxt += ", 축복";
+                fUFun.morePower = Convert.ToInt32(DictEffect["자신 숫자 변동"]);
+            }
+            if (Convert.ToString(DictEffect["죽으면 패배"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 심장";
+                fUFun.playerHeart = true;
+            }
+            if (Convert.ToString(DictEffect["위치 고정"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 이동 불가";
+                fUFun.cantMove = true;
+            }
+            if (Convert.ToString(DictEffect["상대 진영 끝에 도달하면 강화(뒤집기)"]) != "")
+            {
+                fUFun.unitEffectTxt += ", 업그레이드";
+                fUFun.upgradeCode = DictEffect["상대 진영 끝에 도달하면 강화(뒤집기)"];
+            }
+            if (Convert.ToString(DictEffect["자신 진영에서만 이동 가능"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 士";
+                fUFun.onlyMyPlace = true;
+            }
+            if (Convert.ToString(DictEffect["중립진영에 배치"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 정찰병";
+                fUFun.placeAnywhere = true;
+            }
+            if (Convert.ToString(DictEffect["못 움직임 사망시"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 독";
+                fUFun.poision = true;
+            }
+            if (Convert.ToString(DictEffect["숫자 범위 변하지 않음"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 숫자 변동 없음";
+                fUFun.cristalBody = true;
+            }
+            if (Convert.ToString(DictEffect["차례 종료시 랜덤 이동"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 랜덤 이동";
+                fUFun.randomMove = true;
+            }
+            if (Convert.ToString(DictEffect["다른 아군 숫자 변동"]) != "")
+            {
+                fUFun.unitEffectTxt += ", 아군 축복";
+                fUFun.powerUpTotem = Convert.ToInt32(DictEffect["다른 아군 숫자 변동"]);
+            }
+            if (Convert.ToString(DictEffect["못 움직임 이동 대신"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 빙결";
+                fUFun.frozen = true;
+            }
 
             fUFun.wakeUpUnit();
             enermyUnits.Add(fU);
@@ -545,6 +819,7 @@ public class GameMgr : MonoBehaviour
             fU.transform.position = new Vector3(mapMaxX - enermyUnits.Count+3, 3, mapMaxZ + 1);
 
             Units fUFun = fU.GetComponent<Units>();
+            fUFun.myCodeNum = UniqueDictFirst["고유"];
             fUFun.upgradeRank = libmgr.stageLevelCount;
             fUFun.moveCountUpgrade = Convert.ToSingle(UniqueDict["이동횟수 강화"]);
             fUFun.minNumUpgrade = Convert.ToSingle(UniqueDict["숫자 최소치 강화"]);
@@ -552,6 +827,108 @@ public class GameMgr : MonoBehaviour
             fUFun.moveMaxCount = (int)UniqueDict["이동 횟수"] + (int)fUFun.moveCountUpgrade * fUFun.upgradeRank;
             fUFun.minNum = (int)UniqueDict["숫자 최소치"] + (int)fUFun.minNumUpgrade * fUFun.upgradeRank;
             fUFun.maxNum = (int)UniqueDict["숫자 최대치"] + (int)fUFun.maxNumUpgrade * fUFun.upgradeRank;
+
+            Dictionary<string, object> DictEffect = libmgr.unitCodeEffects[UniqueDictFirst["고유"]];
+            if (Convert.ToString(DictEffect["대각선만 이동"]) == "TRUE") { fUFun.bishop = true; fUFun.rook = false; }
+            if (Convert.ToString(DictEffect["전방위 이동"]) == "TRUE") { fUFun.bishop = true; fUFun.rook = true; }
+
+            if (fUFun.rook && !fUFun.bishop)
+                fUFun.unitEffectTxt = "룩";
+            else if (!fUFun.rook && fUFun.bishop)
+                fUFun.unitEffectTxt = "비숍";
+            else if (fUFun.rook && fUFun.bishop)
+                fUFun.unitEffectTxt = "퀸";
+
+            if (Convert.ToString(DictEffect["뒤로 이동 불가"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += "폰";
+                fUFun.pawn = true;
+            }
+            if (Convert.ToString(DictEffect["홀수 차례만 효과"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 홀수 차례";
+                fUFun.oddTurnEffect = true;
+            }
+            if (Convert.ToString(DictEffect["짝수 차례만 효과"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 짝수 차례";
+                fUFun.evenTurnEffect = true;
+            }
+            if (Convert.ToString(DictEffect["좌우 워프"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 워프";
+                fUFun.warp = true;
+            }
+            if (Convert.ToString(DictEffect["전방향 전투"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 전방향 전투";
+                fUFun.attackEvery = true;
+            }
+            if (Convert.ToString(DictEffect["위치 교체"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 교대";
+                fUFun.changePos = true;
+            }
+            if (Convert.ToString(DictEffect["공격시 상대 숫자 변동"]) != "")
+            {
+                fUFun.unitEffectTxt += ", 저주";
+                fUFun.attackMinusPow = Convert.ToInt32(DictEffect["공격시 상대 숫자 변동"]);
+            }
+            if (Convert.ToString(DictEffect["자신 숫자 변동"]) != "")
+            {
+                fUFun.unitEffectTxt += ", 축복";
+                fUFun.morePower = Convert.ToInt32(DictEffect["자신 숫자 변동"]);
+            }
+            if (Convert.ToString(DictEffect["죽으면 패배"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 심장";
+                fUFun.playerHeart = true;
+            }
+            if (Convert.ToString(DictEffect["위치 고정"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 이동 불가";
+                fUFun.cantMove = true;
+            }
+            if (Convert.ToString(DictEffect["상대 진영 끝에 도달하면 강화(뒤집기)"]) != "")
+            {
+                fUFun.unitEffectTxt += ", 업그레이드";
+                fUFun.upgradeCode = DictEffect["상대 진영 끝에 도달하면 강화(뒤집기)"];
+            }
+            if (Convert.ToString(DictEffect["자신 진영에서만 이동 가능"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 士";
+                fUFun.onlyMyPlace = true;
+            }
+            if (Convert.ToString(DictEffect["중립진영에 배치"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 정찰병";
+                fUFun.placeAnywhere = true;
+            }
+            if (Convert.ToString(DictEffect["못 움직임 사망시"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 독";
+                fUFun.poision = true;
+            }
+            if (Convert.ToString(DictEffect["숫자 범위 변하지 않음"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 숫자 변동 없음";
+                fUFun.cristalBody = true;
+            }
+            if (Convert.ToString(DictEffect["차례 종료시 랜덤 이동"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 랜덤 이동";
+                fUFun.randomMove = true;
+            }
+            if (Convert.ToString(DictEffect["다른 아군 숫자 변동"]) != "")
+            {
+                fUFun.unitEffectTxt += ", 아군 축복";
+                fUFun.powerUpTotem = Convert.ToInt32(DictEffect["다른 아군 숫자 변동"]);
+            }
+            if (Convert.ToString(DictEffect["못 움직임 이동 대신"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 빙결";
+                fUFun.frozen = true;
+            }
 
             fUFun.wakeUpUnit();
             enermyUnits.Add(fU);
@@ -566,6 +943,7 @@ public class GameMgr : MonoBehaviour
             fU.transform.position = new Vector3(mapMaxX - enermyUnits.Count + 3, 3, mapMaxZ + 1);
 
             Units fUFun = fU.GetComponent<Units>();
+            fUFun.myCodeNum = UniqueDictFirst["고유"];
             fUFun.upgradeRank = libmgr.stageLevelCount;
             fUFun.moveCountUpgrade = Convert.ToSingle(UniqueDict["이동횟수 강화"]);
             fUFun.minNumUpgrade = Convert.ToSingle(UniqueDict["숫자 최소치 강화"]);
@@ -573,6 +951,108 @@ public class GameMgr : MonoBehaviour
             fUFun.moveMaxCount = (int)UniqueDict["이동 횟수"] + (int)fUFun.moveCountUpgrade * fUFun.upgradeRank;
             fUFun.minNum = (int)UniqueDict["숫자 최소치"] + (int)fUFun.minNumUpgrade * fUFun.upgradeRank;
             fUFun.maxNum = (int)UniqueDict["숫자 최대치"] + (int)fUFun.maxNumUpgrade * fUFun.upgradeRank;
+
+            Dictionary<string, object> DictEffect = libmgr.unitCodeEffects[UniqueDictFirst["고유"]];
+            if (Convert.ToString(DictEffect["대각선만 이동"]) == "TRUE") { fUFun.bishop = true; fUFun.rook = false; }
+            if (Convert.ToString(DictEffect["전방위 이동"]) == "TRUE") { fUFun.bishop = true; fUFun.rook = true; }
+
+            if (fUFun.rook && !fUFun.bishop)
+                fUFun.unitEffectTxt = "룩";
+            else if (!fUFun.rook && fUFun.bishop)
+                fUFun.unitEffectTxt = "비숍";
+            else if (fUFun.rook && fUFun.bishop)
+                fUFun.unitEffectTxt = "퀸";
+
+            if (Convert.ToString(DictEffect["뒤로 이동 불가"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += "폰";
+                fUFun.pawn = true;
+            }
+            if (Convert.ToString(DictEffect["홀수 차례만 효과"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 홀수 차례";
+                fUFun.oddTurnEffect = true;
+            }
+            if (Convert.ToString(DictEffect["짝수 차례만 효과"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 짝수 차례";
+                fUFun.evenTurnEffect = true;
+            }
+            if (Convert.ToString(DictEffect["좌우 워프"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 워프";
+                fUFun.warp = true;
+            }
+            if (Convert.ToString(DictEffect["전방향 전투"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 전방향 전투";
+                fUFun.attackEvery = true;
+            }
+            if (Convert.ToString(DictEffect["위치 교체"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 교대";
+                fUFun.changePos = true;
+            }
+            if (Convert.ToString(DictEffect["공격시 상대 숫자 변동"]) != "")
+            {
+                fUFun.unitEffectTxt += ", 저주";
+                fUFun.attackMinusPow = Convert.ToInt32(DictEffect["공격시 상대 숫자 변동"]);
+            }
+            if (Convert.ToString(DictEffect["자신 숫자 변동"]) != "")
+            {
+                fUFun.unitEffectTxt += ", 축복";
+                fUFun.morePower = Convert.ToInt32(DictEffect["자신 숫자 변동"]);
+            }
+            if (Convert.ToString(DictEffect["죽으면 패배"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 심장";
+                fUFun.playerHeart = true;
+            }
+            if (Convert.ToString(DictEffect["위치 고정"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 이동 불가";
+                fUFun.cantMove = true;
+            }
+            if (Convert.ToString(DictEffect["상대 진영 끝에 도달하면 강화(뒤집기)"]) != "")
+            {
+                fUFun.unitEffectTxt += ", 업그레이드";
+                fUFun.upgradeCode = DictEffect["상대 진영 끝에 도달하면 강화(뒤집기)"];
+            }
+            if (Convert.ToString(DictEffect["자신 진영에서만 이동 가능"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 士";
+                fUFun.onlyMyPlace = true;
+            }
+            if (Convert.ToString(DictEffect["중립진영에 배치"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 정찰병";
+                fUFun.placeAnywhere = true;
+            }
+            if (Convert.ToString(DictEffect["못 움직임 사망시"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 독";
+                fUFun.poision = true;
+            }
+            if (Convert.ToString(DictEffect["숫자 범위 변하지 않음"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 숫자 변동 없음";
+                fUFun.cristalBody = true;
+            }
+            if (Convert.ToString(DictEffect["차례 종료시 랜덤 이동"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 랜덤 이동";
+                fUFun.randomMove = true;
+            }
+            if (Convert.ToString(DictEffect["다른 아군 숫자 변동"]) != "")
+            {
+                fUFun.unitEffectTxt += ", 아군 축복";
+                fUFun.powerUpTotem = Convert.ToInt32(DictEffect["다른 아군 숫자 변동"]);
+            }
+            if (Convert.ToString(DictEffect["못 움직임 이동 대신"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 빙결";
+                fUFun.frozen = true;
+            }
 
             fUFun.wakeUpUnit();
             enermyUnits.Add(fU);
@@ -656,9 +1136,7 @@ public class GameMgr : MonoBehaviour
     {
         if (a == playerUnits[0] || b == enermyUnits[0])
         {
-            if (a == playerUnits[0] && b == enermyUnits[0])
-            {}
-            else if (a == playerUnits[0] && !b == enermyUnits[0])
+            if (a == playerUnits[0])
             {
                 lose = true;
                 losePanel.SetActive(true);
@@ -673,7 +1151,7 @@ public class GameMgr : MonoBehaviour
                 else
                 {
                     win = true;
-                    libmgr.money += 100 * libmgr.stageLevelCount;
+                    libmgr.money += 100 * (libmgr.stageLevelCount+1);
                     winPanel.SetActive(true);
                 }
             }
@@ -735,14 +1213,12 @@ public class GameMgr : MonoBehaviour
         }
     }
 
-
-    public IEnumerator bossAi()
+    void bossAi()
     {
-        findEnermyAndPlayer();
-        yield return new WaitForSecondsRealtime(1f);
         float AiDistX = move1EnermyAi.transform.position.x - targetPlayerUnit1Ai.transform.position.x;
         float AiDistZ = move1EnermyAi.transform.position.z - targetPlayerUnit1Ai.transform.position.z;
-        if (move1EnermyAi.GetComponent<Units>().halfNum >= targetPlayerUnit1Ai.GetComponent<Units>().halfNum)
+        //접근
+        if (move1EnermyAi.GetComponent<Units>().halfNum + bosstype >= targetPlayerUnit1Ai.GetComponent<Units>().halfNum && move1EnermyAi != enermyUnits[0])
         {
             if (move1EnermyAi.GetComponent<Units>().pawn)
             {
@@ -751,99 +1227,161 @@ public class GameMgr : MonoBehaviour
                 {
                     if (AiDistX > 0.1 && AiDistZ > 0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, -1), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else
+                            move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
                     }
                     else if (AiDistX > 0.1 && AiDistZ < -0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else
+                            move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
                     }
                     else if (AiDistX < -0.1 && AiDistZ > 0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, -1), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
                     }
                     else if (AiDistX < -0.1 && AiDistZ < -0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
                     }
                     else if (Mathf.Abs(AiDistX) <= 0.1 && AiDistZ > 0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
                     }
                     else if (AiDistX > 0.1 && Mathf.Abs(AiDistZ) <= 0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
                     }
                     else if (AiDistX < -0.1 && Mathf.Abs(AiDistZ) <= 0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
                     }
-                    else { move1EnermyAi.GetComponent<Units>().moveAble = false; }
+                    else move1EnermyAi.GetComponent<Units>().moveAble = false;
                 }
                 //비숍
                 else if (!move1EnermyAi.GetComponent<Units>().rook && move1EnermyAi.GetComponent<Units>().bishop)
                 {
                     if (AiDistX > 0.1 && AiDistZ > 0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, -1), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
                     }
                     else if (AiDistX > 0.1 && AiDistZ < -0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
                     }
                     else if (AiDistX < -0.1 && AiDistZ > 0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, -1), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
                     }
                     else if (AiDistX < -0.1 && AiDistZ < -0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
                     }
                     else if (Mathf.Abs(AiDistX) <= 0.1 && AiDistZ > 0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
                     }
                     else if (AiDistX > 0.1 && Mathf.Abs(AiDistZ) <= 0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
                     }
                     else if (AiDistX < -0.1 && Mathf.Abs(AiDistZ) <= 0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
                     }
-                    else { move1EnermyAi.GetComponent<Units>().moveAble = false; }
+                    else move1EnermyAi.GetComponent<Units>().moveAble = false;
                 }
                 //룩
                 else if (move1EnermyAi.GetComponent<Units>().rook && !move1EnermyAi.GetComponent<Units>().bishop)
                 {
-                    if (AiDistX > 0.1 && AiDistZ > 0.1)
+                    if (AiDistZ > 0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
                     }
-                    else if (AiDistX > 0.1 && AiDistZ < -0.1)
+                    else if (AiDistX > 0.1 && AiDistZ < 0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
                     }
-                    else if (AiDistX < -0.1 && AiDistZ > 0.1)
+                    else if (AiDistX < -0.1 && AiDistZ < 0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
                     }
-                    else if (AiDistX < -0.1 && AiDistZ < -0.1)
+                    else if (AiDistX > 0.1 && AiDistZ > -0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
                     }
-                    else if (Mathf.Abs(AiDistX) <= 0.1 && AiDistZ > 0.1)
-                    {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
-                    }
-                    else if (AiDistX > 0.1 && Mathf.Abs(AiDistZ) <= 0.1)
-                    {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
-                    }
-                    else if (AiDistX < -0.1 && Mathf.Abs(AiDistZ) <= 0.1)
-                    {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
-                    }
-                    else { move1EnermyAi.GetComponent<Units>().moveAble = false; }
+                    else move1EnermyAi.GetComponent<Units>().moveAble = false;
                 }
             }
             else
@@ -853,127 +1391,1518 @@ public class GameMgr : MonoBehaviour
                 {
                     if (AiDistX > 0.1 && AiDistZ > 0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, -1), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
                     }
                     else if (AiDistX > 0.1 && AiDistZ < -0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
                     }
                     else if (AiDistX < -0.1 && AiDistZ > 0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, -1), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
                     }
                     else if (AiDistX < -0.1 && AiDistZ < -0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
                     }
                     else if (Mathf.Abs(AiDistX) <= 0.1 && AiDistZ > 0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
                     }
                     else if (AiDistX > 0.1 && Mathf.Abs(AiDistZ) <= 0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
                     }
                     else if (AiDistX < -0.1 && Mathf.Abs(AiDistZ) <= 0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
                     }
-                    else { move1EnermyAi.GetComponent<Units>().moveAble = false; }
+                    else move1EnermyAi.GetComponent<Units>().moveAble = false;
                 }
                 //비숍
                 else if (!move1EnermyAi.GetComponent<Units>().rook && move1EnermyAi.GetComponent<Units>().bishop)
                 {
                     if (AiDistX > 0.1 && AiDistZ > 0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, -1), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
                     }
                     else if (AiDistX > 0.1 && AiDistZ < -0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
                     }
                     else if (AiDistX < -0.1 && AiDistZ > 0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, -1), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
                     }
                     else if (AiDistX < -0.1 && AiDistZ < -0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
                     }
                     else if (Mathf.Abs(AiDistX) <= 0.1 && AiDistZ > 0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
                     }
                     else if (AiDistX > 0.1 && Mathf.Abs(AiDistZ) <= 0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
                     }
                     else if (AiDistX < -0.1 && Mathf.Abs(AiDistZ) <= 0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
                     }
-                    else { move1EnermyAi.GetComponent<Units>().moveAble = false; }
+                    else move1EnermyAi.GetComponent<Units>().moveAble = false;
                 }
                 //룩
                 else if (move1EnermyAi.GetComponent<Units>().rook && !move1EnermyAi.GetComponent<Units>().bishop)
                 {
-                    if (AiDistX > 0.1 && AiDistZ > 0.1)
+                    if (AiDistZ > 0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
                     }
-                    else if (AiDistX > 0.1 && AiDistZ < -0.1)
+                    else if (AiDistX > 0.1 && AiDistZ < 0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
                     }
-                    else if (AiDistX < -0.1 && AiDistZ > 0.1)
+                    else if (AiDistX < 0.1 && AiDistX > -0.1 && AiDistZ < 0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, 1), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, 1));
                     }
-                    else if (AiDistX < -0.1 && AiDistZ < -0.1)
+                    else if (AiDistX < -0.1 && AiDistZ < 0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
                     }
-                    else if (Mathf.Abs(AiDistX) <= 0.1 && AiDistZ > 0.1)
+                    else if (AiDistX > 0.1 && AiDistZ > -0.1)
                     {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
                     }
-                    else if (AiDistX > 0.1 && Mathf.Abs(AiDistZ) <= 0.1)
-                    {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
-                    }
-                    else if (AiDistX < -0.1 && Mathf.Abs(AiDistZ) <= 0.1)
-                    {
-                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
-                    }
-                    else { move1EnermyAi.GetComponent<Units>().moveAble = false; }
+                    else move1EnermyAi.GetComponent<Units>().moveAble = false;
                 }
             }
         }
-
-        if (move1EnermyAi.GetComponent<Units>().moveCount < move1EnermyAi.GetComponent<Units>().moveMaxCount)
+        //회피시 거리가 멀어서 자율 행동
+        else if (move1EnermyAi.GetComponent<Units>().halfNum + bosstype < targetPlayerUnit1Ai.GetComponent<Units>().halfNum
+            && Mathf.Abs(move1EnermyAi.GetComponent<Units>().transform.position.z - targetPlayerUnit1Ai.GetComponent<Units>().transform.position.z) > 3 && move1EnermyAi != enermyUnits[0])
         {
-            findEnermyAndPlayer();
-            yield return null;
-            StartCoroutine(bossAi());
+            if (move1EnermyAi.transform.position.x == 1)
+            {
+                if (move1EnermyAi.GetComponent<Units>().pawn)
+                {
+                    //퀸
+                    if (move1EnermyAi.GetComponent<Units>().rook && move1EnermyAi.GetComponent<Units>().bishop)
+                    {
+                        if (playerUnits[0].transform.position.x > move1EnermyAi.transform.position.x)
+                        {
+                            if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else
+                                move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                        }
+                        else
+                        {
+                            if (playerUnits[0].transform.position.z > move1EnermyAi.transform.position.z)
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                            }
+                        }
+                    }
+                    //비숍
+                    if (!move1EnermyAi.GetComponent<Units>().rook && move1EnermyAi.GetComponent<Units>().bishop)
+                    {
+                        if (playerUnits[0].transform.position.x > move1EnermyAi.transform.position.x)
+                        {
+                            if (playerUnits[0].transform.position.z < move1EnermyAi.transform.position.z)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
+                            }
+                            else
+                            {
+                                 move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                        }
+                        else
+                        {
+                            if (playerUnits[0].transform.position.z > move1EnermyAi.transform.position.z)
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
+                            }
+                        }
+                    }
+                    //룩
+                    else
+                    {
+                        if (playerUnits[0].transform.position.x > move1EnermyAi.transform.position.x)
+                        {
+                            if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else
+                                move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                        }
+                        else
+                        {
+                            if (playerUnits[0].transform.position.z > move1EnermyAi.transform.position.z)
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                            }
+                        }
+                    }
+                }
+                else 
+                {
+                    //퀸
+                    if (move1EnermyAi.GetComponent<Units>().rook && move1EnermyAi.GetComponent<Units>().bishop)
+                    {
+                        if (playerUnits[0].transform.position.x > move1EnermyAi.transform.position.x)
+                        {
+                            if (playerUnits[0].transform.position.z > move1EnermyAi.transform.position.z)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 1));
+                            }
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                            }
+                        }
+                        else
+                        {
+                            if (playerUnits[0].transform.position.z > move1EnermyAi.transform.position.z)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 1));
+                            }
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                            }
+                        }
+                    }
+                    //비숍
+                    if (!move1EnermyAi.GetComponent<Units>().rook && move1EnermyAi.GetComponent<Units>().bishop)
+                    {
+                        if (playerUnits[0].transform.position.x > move1EnermyAi.transform.position.x)
+                        {
+                            if (playerUnits[0].transform.position.z < move1EnermyAi.transform.position.z)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
+                            }
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 1));
+                            }
+                        }
+                        else
+                        {
+                            if (playerUnits[0].transform.position.z > move1EnermyAi.transform.position.z)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 1));
+                            }
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
+                            }
+                        }
+                    }
+                    //룩
+                    else
+                    {
+                        if (playerUnits[0].transform.position.x > move1EnermyAi.transform.position.x)
+                        {
+                            if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else
+                                move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                        }
+                        else
+                        {
+                            if (playerUnits[0].transform.position.z > move1EnermyAi.transform.position.z)
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                            }
+                        }
+                    }
+                }
+            }
+            else if (move1EnermyAi.transform.position.x == mapMaxX)
+            {
+                if (move1EnermyAi.GetComponent<Units>().pawn)
+                {
+                    //퀸
+                    if (move1EnermyAi.GetComponent<Units>().rook && move1EnermyAi.GetComponent<Units>().bishop)
+                    {
+                        if (playerUnits[0].transform.position.x < move1EnermyAi.transform.position.x)
+                        {
+                            if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else
+                                move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                        }
+                        else
+                        {
+                            if (playerUnits[0].transform.position.z > move1EnermyAi.transform.position.z)
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                            }
+                        }
+                    }
+                    //비숍
+                    if (!move1EnermyAi.GetComponent<Units>().rook && move1EnermyAi.GetComponent<Units>().bishop)
+                    {
+                        if (playerUnits[0].transform.position.x < move1EnermyAi.transform.position.x)
+                        {
+                            if (playerUnits[0].transform.position.z < move1EnermyAi.transform.position.z)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
+                            }
+                            else
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                        }
+                        else
+                        {
+                            if (playerUnits[0].transform.position.z > move1EnermyAi.transform.position.z)
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
+                            }
+                        }
+                    }
+                    //룩
+                    else
+                    {
+                        if (playerUnits[0].transform.position.x < move1EnermyAi.transform.position.x)
+                        {
+                            if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else
+                                move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                        }
+                        else
+                        {
+                            if (playerUnits[0].transform.position.z > move1EnermyAi.transform.position.z)
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    //퀸
+                    if (move1EnermyAi.GetComponent<Units>().rook && move1EnermyAi.GetComponent<Units>().bishop)
+                    {
+                        if (playerUnits[0].transform.position.x < move1EnermyAi.transform.position.x)
+                        {
+                            if (playerUnits[0].transform.position.z > move1EnermyAi.transform.position.z)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 1));
+                            }
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                            }
+                        }
+                        else
+                        {
+                            if (playerUnits[0].transform.position.z > move1EnermyAi.transform.position.z)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 1));
+                            }
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                            }
+                        }
+                    }
+                    //비숍
+                    if (!move1EnermyAi.GetComponent<Units>().rook && move1EnermyAi.GetComponent<Units>().bishop)
+                    {
+                        if (playerUnits[0].transform.position.x < move1EnermyAi.transform.position.x)
+                        {
+                            if (playerUnits[0].transform.position.z < move1EnermyAi.transform.position.z)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
+                            }
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 1));
+                            }
+                        }
+                        else
+                        {
+                            if (playerUnits[0].transform.position.z > move1EnermyAi.transform.position.z)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 1));
+                            }
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
+                            }
+                        }
+                    }
+                    //룩
+                    else
+                    {
+                        if (playerUnits[0].transform.position.x < move1EnermyAi.transform.position.x)
+                        {
+                            if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else
+                                move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                        }
+                        else
+                        {
+                            if (playerUnits[0].transform.position.z > move1EnermyAi.transform.position.z)
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                if (move1EnermyAi.transform.position.z < mapMaxZ && move1EnermyAi.transform.position.z != 1)
+                {
+                    if (playerUnits[0].transform.position.z < move1EnermyAi.transform.position.z)
+                    {
+                        //퀸
+                        if (move1EnermyAi.GetComponent<Units>().rook && move1EnermyAi.GetComponent<Units>().bishop)
+                        {
+                            if (playerUnits[0].transform.position.x < move1EnermyAi.transform.position.x)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
+                            }
+                            else if (playerUnits[0].transform.position.x > move1EnermyAi.transform.position.x)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
+                            }
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                            }
+                        }
+                        //비숍
+                        if (!move1EnermyAi.GetComponent<Units>().rook && move1EnermyAi.GetComponent<Units>().bishop)
+                        {
+                            if (playerUnits[0].transform.position.x < move1EnermyAi.transform.position.x)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
+                            }
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
+                            }
+                        }
+                        //룩
+                        {
+                            if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else
+                                move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                        }
+                    }
+                    else
+                    { 
+                        //퀸
+                        if (move1EnermyAi.GetComponent<Units>().rook && move1EnermyAi.GetComponent<Units>().bishop)
+                        {
+                            if (move1EnermyAi.GetComponent<Units>().pawn)
+                            {
+                                if (playerUnits[0].transform.position.x < move1EnermyAi.transform.position.x)
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else
+                                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                                }
+                                else if (playerUnits[0].transform.position.x > move1EnermyAi.transform.position.x)
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else
+                                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                                }
+                                else
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                            }
+                            else
+                            {
+                                if (playerUnits[0].transform.position.x < move1EnermyAi.transform.position.x)
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else
+                                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                                }
+                                else if (playerUnits[0].transform.position.x > move1EnermyAi.transform.position.x)
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else
+                                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                                }
+                                else
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, 1), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else
+                                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, 1));
+                                }
+                            }
+                        }
+                        //비숍
+                        if (!move1EnermyAi.GetComponent<Units>().rook && move1EnermyAi.GetComponent<Units>().bishop)
+                        {
+                            if (move1EnermyAi.GetComponent<Units>().pawn)
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            else
+                            {
+                                if (playerUnits[0].transform.position.x < move1EnermyAi.transform.position.x)
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 1), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else
+                                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 1));
+                                }
+                                else
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 1), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else
+                                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 1));
+                                }
+                            }
+                        }
+                        //룩
+                        {
+                            if (playerUnits[0].transform.position.x < move1EnermyAi.transform.position.x)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                            }
+                            else if (playerUnits[0].transform.position.x > move1EnermyAi.transform.position.x)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                            }
+                            else 
+                            {
+                                if (move1EnermyAi.GetComponent<Units>().pawn)
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                else
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, 1), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else
+                                        move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, 1));
+                                }
+                            }
+                        }
+                    }
+                }
+                else if (move1EnermyAi.transform.position.z == 1)
+                {
+                    if (move1EnermyAi.transform.position.x > mapMaxX / 2)
+                    {   //비숍
+                        if (!move1EnermyAi.GetComponent<Units>().rook && move1EnermyAi.GetComponent<Units>().bishop)
+                        {
+                            if (move1EnermyAi.GetComponent<Units>().pawn)
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
+                            }
+                        }
+                        //룩
+                        else if (move1EnermyAi.GetComponent<Units>().rook)
+                        {
+                            if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else
+                                move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                        }
+                    }
+                    else
+                    {
+                        //비숍
+                        if (!move1EnermyAi.GetComponent<Units>().rook && move1EnermyAi.GetComponent<Units>().bishop)
+                        {
+                            if (move1EnermyAi.GetComponent<Units>().pawn)
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else
+                                    move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
+                            }
+                        }
+                        //룩
+                        else if (move1EnermyAi.GetComponent<Units>().rook)
+                        {
+                            if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                        }
+                    }
+                }
+                else
+                {
+                    if (move1EnermyAi.transform.position.x > mapMaxX / 2)
+                    {   //비숍
+                        if (!move1EnermyAi.GetComponent<Units>().rook && move1EnermyAi.GetComponent<Units>().bishop)
+                        {
+                            if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, -1), out RaycastHit hit, 1f))
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
+                        }
+                        //룩
+                        else if (move1EnermyAi.GetComponent<Units>().rook)
+                        {
+                            if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else
+                                move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                        }
+                    }
+                    else
+                    {
+                        //비숍
+                        if (!move1EnermyAi.GetComponent<Units>().rook && move1EnermyAi.GetComponent<Units>().bishop)
+                        {
+                            if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, -1), out RaycastHit hit, 1f))
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
+                        }
+                        //룩
+                        else if (move1EnermyAi.GetComponent<Units>().rook)
+                        {
+                            if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                        }
+                    }
+                }
+            }
         }
-        else if (turnMove < turnMaxMove)
+        //회피
+        else
         {
-            findEnermyAndPlayer();
-            yield return null;
-            StartCoroutine(bossAi());
+            //맵 맨 위 아닌 경우
+            if (move1EnermyAi.transform.position.z < mapMaxZ)
+            {
+                if (move1EnermyAi.GetComponent<Units>().pawn)
+                {
+                    //퀸
+                    if (move1EnermyAi.GetComponent<Units>().rook && move1EnermyAi.GetComponent<Units>().bishop)
+                    {
+                        if (move1EnermyAi.transform.position.x == 1)
+                        {
+                            if (AiDistZ < 0.1 && move1EnermyAi.transform.position.z != 1)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                            }
+                            else move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else if (move1EnermyAi.transform.position.x == mapMaxX)
+                        {
+                            if (AiDistZ < 0.1 && move1EnermyAi.transform.position.z != 1)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                            }
+                            else move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else
+                        {
+                            if (AiDistX > 0.1)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                            }
+                            else if (AiDistX < -0.1)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                            }
+                            else
+                            {
+                                int rnd = UnityEngine.Random.Range(0, 2);
+                                if (rnd == 0)
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                                }
+                                else if (rnd == 1)
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                                }
+                            }
+                        }
+                    }
+                    //비숍
+                    else if (!move1EnermyAi.GetComponent<Units>().rook && move1EnermyAi.GetComponent<Units>().bishop)
+                    {
+                        if (move1EnermyAi.transform.position.x == 1)
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else if (move1EnermyAi.transform.position.x == mapMaxX)
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else
+                        {
+                            if (move1EnermyAi.transform.position.z == 1)
+                            {
+                                if (AiDistX > 0.1 && AiDistZ < 0.1)
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, -1), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
+                                }
+                                else if (AiDistX < -0.1 && AiDistZ < 0.1)
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, -1), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
+                                }
+                                else move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                    }
+                    //룩
+                    else if (move1EnermyAi.GetComponent<Units>().rook && !move1EnermyAi.GetComponent<Units>().bishop)
+                    {
+                        if (move1EnermyAi.transform.position.x == 1)
+                        {
+                            if (AiDistZ < 0.1 && move1EnermyAi.transform.position.z != 1)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                            }
+                            else move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else if (move1EnermyAi.transform.position.x == mapMaxX)
+                        {
+                            if (AiDistZ < 0.1 && move1EnermyAi.transform.position.z != 1)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                            }
+                            else move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else
+                        {
+                            if (AiDistX > 0.1)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                            }
+                            else if (AiDistX < -0.1)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                            }
+                            else
+                            {
+                                int rnd = UnityEngine.Random.Range(0, 2);
+                                if (rnd == 0)
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                                }
+                                else
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    //퀸
+                    if (move1EnermyAi.GetComponent<Units>().rook && move1EnermyAi.GetComponent<Units>().bishop)
+                    {
+                        if (move1EnermyAi.transform.position.x == 1)
+                        {
+                            if (AiDistZ >= -0.1)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, 1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, 1));
+                            }
+                            else
+                            {
+                                int rnd = UnityEngine.Random.Range(0, 2);
+                                if (rnd == 0)
+                                { move1EnermyAi.GetComponent<Units>().moveAble = false; }
+                                else
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                                }
+                            }
+                        }
+                        else if (move1EnermyAi.transform.position.x == mapMaxX)
+                        {
+                            if (AiDistZ >= -0.1)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, 1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, 1));
+                            }
+                            else
+                            {
+                                int rnd = UnityEngine.Random.Range(0, 2);
+                                if (rnd == 0)
+                                { move1EnermyAi.GetComponent<Units>().moveAble = false; }
+                                else
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                                }
+                            }
+                        }
+                        else
+                        {
+                            if (AiDistZ < 0.1 && AiDistZ > -0.1)
+                            {
+                                if (AiDistX > 0.1)
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 1), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 1));
+                                }
+                                else if (AiDistX < -0.1)
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 1), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 1));
+                                }
+                            }
+                            else
+                            {
+                                if (AiDistX > 0.1)
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                                }
+                                else if (AiDistX < -0.1)
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                                }
+                                else
+                                {
+                                    int rnd = UnityEngine.Random.Range(0, 2);
+                                    if (rnd == 0)
+                                    {
+                                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                                        {
+                                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                        }
+                                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                                    }
+                                    else if (rnd == 1)
+                                    {
+                                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                                        {
+                                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                        }
+                                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    //비숍
+                    else if (!move1EnermyAi.GetComponent<Units>().rook && move1EnermyAi.GetComponent<Units>().bishop)
+                    {
+                        if (move1EnermyAi.transform.position.x == 1)
+                        {
+                            if (AiDistZ > -0.1)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 1));
+                            }
+                            else if (AiDistZ < -0.1 && targetPlayerUnit1Ai.transform.position.x == 1)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
+                            }
+                            else move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else if (move1EnermyAi.transform.position.x == mapMaxX)
+                        {
+                            if (AiDistZ > -0.1)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 1));
+                            }
+                            else if (AiDistZ < -0.1 && targetPlayerUnit1Ai.transform.position.x == mapMaxX)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
+                            }
+                            else move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else
+                        {
+                            if (AiDistZ > -0.1)
+                            {
+                                if (AiDistX > 0.1)
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 1), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 1));
+                                }
+                                else if (AiDistX < -0.1)
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 1), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 1));
+                                }
+                                else
+                                {
+                                    int rnd = UnityEngine.Random.Range(0, 2);
+                                    if (rnd == 0)
+                                    {
+                                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 1), out RaycastHit hit, 1f))
+                                        {
+                                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                        }
+                                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 1));
+                                    }
+                                    else
+                                    {
+                                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 1), out RaycastHit hit, 1f))
+                                        {
+                                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                        }
+                                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 1));
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                if (AiDistX > 0.1)
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, -1), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
+                                }
+                                else if (AiDistX < -0.1)
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, -1), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
+                                }
+                                else
+                                {
+                                    int rnd = UnityEngine.Random.Range(0, 2);
+                                    if (rnd == 0)
+                                    {
+                                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, -1), out RaycastHit hit, 1f))
+                                        {
+                                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                        }
+                                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
+                                    }
+                                    else
+                                    {
+                                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, -1), out RaycastHit hit, 1f))
+                                        {
+                                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                        }
+                                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    //룩
+                    else if (move1EnermyAi.GetComponent<Units>().rook && !move1EnermyAi.GetComponent<Units>().bishop)
+                    {
+                        if (move1EnermyAi.transform.position.x == 1)
+                        {
+                            if (AiDistZ >= -0.1)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, 1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, 1));
+                            }
+                            else
+                            {
+                                int rnd = UnityEngine.Random.Range(0, 2);
+                                if (rnd == 0)
+                                { move1EnermyAi.GetComponent<Units>().moveAble = false; }
+                                else
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                                }
+                            }
+                        }
+                        else if (move1EnermyAi.transform.position.x == mapMaxX)
+                        {
+                            if (AiDistZ >= -0.1)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, 1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, 1));
+                            }
+                            else
+                            {
+                                int rnd = UnityEngine.Random.Range(0, 2);
+                                if (rnd == 0)
+                                { move1EnermyAi.GetComponent<Units>().moveAble = false; }
+                                else
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                                }
+                            }
+                        }
+                        else
+                        {
+                            if (AiDistZ < -0.1)
+                            {
+                                if (AiDistX > 0.1)
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                                }
+                                else if (AiDistX < -0.1)
+                                {
+                                    if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                                    {
+                                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                    }
+                                    else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                                }
+                                else
+                                {
+                                    if (AiDistZ > -2.1)
+                                    {
+                                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                                        {
+                                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                        }
+                                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                                    }
+                                    else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                                }
+                            }
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, 1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, 1));
+                            }
+                        }
+                    }
+                }
+            }
+            // 맵 맨 위
+            else
+            {
+                if (move1EnermyAi.transform.position.x == 1)
+                {
+                    if (targetPlayerUnit1Ai.transform.position.x == 1 && move1EnermyAi.GetComponent<Units>().rook)
+                    {
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                    }
+                    else move1EnermyAi.GetComponent<Units>().moveAble = false;
+                }
+                else if (move1EnermyAi.transform.position.x == mapMaxX)
+                {
+                    if (targetPlayerUnit1Ai.transform.position.x == mapMaxX && move1EnermyAi.GetComponent<Units>().rook)
+                    {
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                    }
+                    else move1EnermyAi.GetComponent<Units>().moveAble = false;
+                }
+                else
+                {
+                    //비숍
+                    if (!move1EnermyAi.GetComponent<Units>().rook && move1EnermyAi.GetComponent<Units>().bishop)
+                    {
+                        move1EnermyAi.GetComponent<Units>().moveAble = false;
+                    }
+                    //룩
+                    else if (move1EnermyAi.GetComponent<Units>().rook)
+                    {
+                        if (AiDistX > 0.1)
+                        {
+                            if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                        }
+                        else if (AiDistX < -0.1)
+                        {
+                            if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                        }
+                        else
+                        {
+                            int rnd = UnityEngine.Random.Range(0, 2);
+                            if (rnd == 0)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                            }
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                            }
+                        }
+                    }
+                }
+            }
         }
-        else if (turnMove >= turnMaxMove)
-        {
-            canMove = true;
-            gmrUi.whosTurnTxtChange();
-            turnTime = 0;
-            playerTurn = true;
-            turnMove = 0;
-            selectOn = false;
-            gmrUi.moveCountTxtChange(turnMaxMove - turnMove);
-            playerUnits.ForEach(unit => unit.GetComponent<Units>().moveAble = true);
-            playerUnits.ForEach(unit => unit.GetComponent<Units>().moveCount = 0);
-        }
+        aiSelect = false;
+        move1EnermyAi = null;
     }
 
     // AI 유닛 세팅
@@ -982,7 +2911,12 @@ public class GameMgr : MonoBehaviour
         for (int i = 0; i < enermyUnits.Count; i++)
         {
             if (!enermyUnits[i].GetComponent<Units>().moveAble)
-            { }
+            {
+                if (move1EnermyAi == enermyUnits[i])
+                {
+                    move1EnermyAi = null;
+                }
+            }
             else
             {
                 if (enermyUnits[i].GetComponent<Units>().attackEvery)
@@ -1186,8 +3120,6 @@ public class GameMgr : MonoBehaviour
                         }
                     }
                 }
-
-           
             
                 for (int j = 0; j < playerUnits.Count; j++)
                 {
@@ -1200,10 +3132,11 @@ public class GameMgr : MonoBehaviour
                     {
 
                         if (Mathf.Abs(move1EnermyAi.transform.position.x - playerUnits[0].transform.position.x)
-                    + Mathf.Abs(move1EnermyAi.transform.position.z - playerUnits[0].transform.position.z) - move1EnermyAi.GetComponent<Units>().moveMaxCount >
+                    + Mathf.Abs(move1EnermyAi.transform.position.z - playerUnits[0].transform.position.z) >
                             Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[0].transform.position.x)
                     + Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[0].transform.position.z)
-                        && enermyUnits[i].GetComponent<Units>().rook)
+                        && enermyUnits[i].GetComponent<Units>().rook && Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[0].transform.position.x)
+                    + Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[0].transform.position.z) < 3)
                         {
                             if (enermyUnits[i].GetComponent<Units>().pawn)
                             {
@@ -1211,6 +3144,7 @@ public class GameMgr : MonoBehaviour
                                 {
                                     move1EnermyAi = enermyUnits[i];
                                     targetPlayerUnit1Ai = playerUnits[0];
+                                    aiSelect = true;
                                     break;
                                 }
                             }
@@ -1218,6 +3152,7 @@ public class GameMgr : MonoBehaviour
                             {
                                 move1EnermyAi = enermyUnits[i];
                                 targetPlayerUnit1Ai = playerUnits[0];
+                                aiSelect = true;
                                 break;
                             }
                         }
@@ -1245,6 +3180,7 @@ public class GameMgr : MonoBehaviour
                                                 {
                                                     move1EnermyAi = enermyUnits[i];
                                                     targetPlayerUnit1Ai = playerUnits[0];
+                                                    aiSelect = true;
                                                     break;
                                                 }
                                             }
@@ -1252,6 +3188,7 @@ public class GameMgr : MonoBehaviour
                                             {
                                                 move1EnermyAi = enermyUnits[i];
                                                 targetPlayerUnit1Ai = playerUnits[0];
+                                                aiSelect = true;
                                                 break;
                                             }
                                         }
@@ -1264,6 +3201,7 @@ public class GameMgr : MonoBehaviour
                                             {
                                                 move1EnermyAi = enermyUnits[i];
                                                 targetPlayerUnit1Ai = playerUnits[0];
+                                                aiSelect = true;
                                                 break;
                                             }
                                         }
@@ -1271,6 +3209,7 @@ public class GameMgr : MonoBehaviour
                                         {
                                             move1EnermyAi = enermyUnits[i];
                                             targetPlayerUnit1Ai = playerUnits[0];
+                                            aiSelect=true;
                                             break;
                                         }
                                     }
@@ -1283,13 +3222,14 @@ public class GameMgr : MonoBehaviour
                     + Mathf.Abs(move1EnermyAi.transform.position.z - playerUnits[0].transform.position.z) - move1EnermyAi.GetComponent<Units>().moveMaxCount >
                             Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[0].transform.position.x)
                     + Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[0].transform.position.z))
-                        {
+                        {                          
                             move1EnermyAi = enermyUnits[i];
                             targetPlayerUnit1Ai = playerUnits[j];
                         }
                     }
                 }
             }
+            aiSelect = true;
         }
     }
     //뒤집기
