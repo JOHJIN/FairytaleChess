@@ -1,8 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Unity.VisualScripting;
 using UnityEngine;
@@ -65,6 +63,14 @@ public class GameMgr : MonoBehaviour
     public bool aiSelect = false;
     float aiTime = 0;
     public int bosstype = 0;
+
+    public Image playerUnitFight2D;
+    public Image enermyUnitFight2D;
+    public Image winplayerUnitFight2D;
+    public Image winenermyUnitFight2D;
+    public Image loseplayerUnitFight2D;
+    public Image loseenermyUnitFight2D;
+    public Text moneyTxt;
     void Start()
     {
         StartCoroutine(gmrStartCorou());
@@ -437,8 +443,11 @@ public class GameMgr : MonoBehaviour
         //배치 끝났을 시 버튼 클릭
         if (placementTime)
         {
-            StartCoroutine(placementOverCorou());
-            StartCoroutine(startAndDestroy());
+            if (playerUnits[0].transform.position.y < 1)
+            {
+                StartCoroutine(placementOverCorou());
+                StartCoroutine(startAndDestroy());
+            }
         }
 
         // 턴 종료시 버튼 클릭
@@ -468,10 +477,12 @@ public class GameMgr : MonoBehaviour
         p1.name = playerDict["Name"].ToString();
         p1.transform.position = new Vector3(0, 3, 2);
         p1.GetComponent<Units>().wakeUpUnit();
+        p1.GetComponent<Units>().myCodeNum = libmgr.playerUnitsData[0][0];
         p1.GetComponent<Units>().upgradeRank = (int)libmgr.playerUnitsData[0][1];
         p1.GetComponent<Units>().unitEffectTxt = "플레이어";
+        p1.GetComponent<Units>().unit2DImage = Resources.Load<Sprite>("Image2D/" + p1.GetComponent<Units>().myCodeNum.ToString());
         playerUnits.Add(p1);
-
+        
         for (int i = 1; i < libmgr.playerUnitsData.Count; i++)
         {
             GameObject fU = Instantiate(friendlyBass);
@@ -488,6 +499,7 @@ public class GameMgr : MonoBehaviour
             fUFun.moveMaxCount = (int)Dict["이동 횟수"] + (int)fUFun.moveCountUpgrade *fUFun.upgradeRank;
             fUFun.minNum = (int)Dict["숫자 최소치"] + (int)fUFun.minNumUpgrade *fUFun.upgradeRank;
             fUFun.maxNum = (int)Dict["숫자 최대치"] + (int)fUFun.maxNumUpgrade *fUFun.upgradeRank;
+            fUFun.unit2DImage = Resources.Load<Sprite>("Image2D/" + fUFun.myCodeNum);
 
             Dictionary<string, object> DictEffect = libmgr.unitCodeEffects[libmgr.playerUnitsData[i][0]];
             if (Convert.ToString(DictEffect["대각선만 이동"]) == "TRUE") { fUFun.bishop = true; fUFun.rook = false; }
@@ -502,7 +514,7 @@ public class GameMgr : MonoBehaviour
 
             if (Convert.ToString(DictEffect["뒤로 이동 불가"]) == "TRUE")
             {
-                fUFun.unitEffectTxt += "폰";
+                fUFun.unitEffectTxt += ", 폰";
                 fUFun.pawn = true;
             }
             if (Convert.ToString(DictEffect["홀수 차례만 효과"]) == "TRUE")
@@ -603,21 +615,16 @@ public class GameMgr : MonoBehaviour
     //배치 종료후 플레이터 턴이 아닌 에너미 턴으로 넘어가는 오류 해결 위해서 코루틴으로 설정
     IEnumerator placementOverCorou()
     {
-        if (playerUnits[0].transform.position.y < 1)
-        {
-            gmrUi.whosTurnTxtChange();
-            yield return null;
-            placementTime = false;
-            turnMove = 0;
-            turnTime = 0;
-            selectOn = false;
-            playerTurn = true;
-            canMove = true;
-            playerUnits.ForEach(pUnits => pUnits.GetComponent<Units>().moveAble = true); // 플레이어 유닛 전원 무브 가능 상태로 람다식
-            yield return new WaitForSecondsRealtime(0.5f);
-        }
-        else
-            yield return null;
+        gmrUi.whosTurnTxtChange();
+        yield return null;
+        placementTime = false;
+        turnMove = 0;
+        turnTime = 0;
+        selectOn = false;
+        playerTurn = true;
+        canMove = true;
+        playerUnits.ForEach(pUnits => pUnits.GetComponent<Units>().moveAble = true); // 플레이어 유닛 전원 무브 가능 상태로 람다식
+        yield return new WaitForSecondsRealtime(0.5f);
     }
 
     //배치 종료후 배치 안한 유닛 파괴
@@ -654,19 +661,19 @@ public class GameMgr : MonoBehaviour
                 {
                     GameObject zTile = Instantiate(friendlyTiles, tileMap.transform);
                     zTile.transform.position = new Vector3(i, -0.5f, j);
-                    zTile.GetComponent<Renderer>().material.mainTexture = Resources.Load("Textures/playerTile_0") as Texture;
+                    zTile.GetComponent<Renderer>().material.mainTexture = Resources.Load("Textures/playerTile_" + bossMapDict["ID"]) as Texture;
                 }
                 else if (j > mapMaxZ - friendlyZone)
                 {
                     GameObject zTile = Instantiate(enermyTiles, tileMap.transform);
                     zTile.transform.position = new Vector3(i, -0.5f, j);
-                    zTile.GetComponent<Renderer>().material.mainTexture = Resources.Load("Textures/enermyTile_" + 0) as Texture;
+                    zTile.GetComponent<Renderer>().material.mainTexture = Resources.Load("Textures/enermyTile_" + bossMapDict["ID"]) as Texture;
                 }
                 else
                 {
                     GameObject zTile = Instantiate(normalTiles, tileMap.transform);
                     zTile.transform.position = new Vector3(i, -0.5f, j);
-                    zTile.GetComponent<Renderer>().material.mainTexture = Resources.Load("Textures/normalTile_" + 0) as Texture;
+                    zTile.GetComponent<Renderer>().material.mainTexture = Resources.Load("Textures/normalTile_" + bossMapDict["ID"]) as Texture;
                 }
             }
         }
@@ -678,9 +685,11 @@ public class GameMgr : MonoBehaviour
         GameObject BossfU = Instantiate(bossBass);
         Dictionary<string, object> DictBoss = libmgr.unitCode[libmgr.bossToMeet[libmgr.stageLevelCount][0]];
         BossfU.name = DictBoss["Name"].ToString();
+        BossfU.GetComponent<Units>().myCodeNum = libmgr.bossToMeet[libmgr.stageLevelCount][0];
         BossfU.GetComponent<Units>().wakeUpUnit();
         BossfU.transform.position = new Vector3(mapMaxX+3, 3, mapMaxZ + 1);
         BossfU.GetComponent<Units>().unitEffectTxt = "보스";
+        BossfU.GetComponent<Units>().unit2DImage = Resources.Load<Sprite>("Image2D/" + BossfU.GetComponent<Units>().myCodeNum);
         enermyUnits.Add(BossfU);
 
         yield return null;
@@ -703,6 +712,7 @@ public class GameMgr : MonoBehaviour
             fUFun.moveMaxCount = (int)Dict["이동 횟수"] + (int)fUFun.moveCountUpgrade * fUFun.upgradeRank;
             fUFun.minNum = (int)Dict["숫자 최소치"] + (int)fUFun.minNumUpgrade * fUFun.upgradeRank;
             fUFun.maxNum = (int)Dict["숫자 최대치"] + (int)fUFun.maxNumUpgrade * fUFun.upgradeRank;
+            fUFun.unit2DImage = Resources.Load<Sprite>("Image2D/" + fUFun.myCodeNum);
 
             Dictionary<string, object> DictEffect = libmgr.unitCodeEffects[DictFirst["기본"]];
             if (Convert.ToString(DictEffect["대각선만 이동"]) == "TRUE") { fUFun.bishop = true; fUFun.rook = false; }
@@ -717,7 +727,7 @@ public class GameMgr : MonoBehaviour
 
             if (Convert.ToString(DictEffect["뒤로 이동 불가"]) == "TRUE")
             {
-                fUFun.unitEffectTxt += "폰";
+                fUFun.unitEffectTxt += ", 폰";
                 fUFun.pawn = true;
             }
             if (Convert.ToString(DictEffect["홀수 차례만 효과"]) == "TRUE")
@@ -827,6 +837,7 @@ public class GameMgr : MonoBehaviour
             fUFun.moveMaxCount = (int)UniqueDict["이동 횟수"] + (int)fUFun.moveCountUpgrade * fUFun.upgradeRank;
             fUFun.minNum = (int)UniqueDict["숫자 최소치"] + (int)fUFun.minNumUpgrade * fUFun.upgradeRank;
             fUFun.maxNum = (int)UniqueDict["숫자 최대치"] + (int)fUFun.maxNumUpgrade * fUFun.upgradeRank;
+            fUFun.unit2DImage = Resources.Load<Sprite>("Image2D/" + fUFun.myCodeNum);
 
             Dictionary<string, object> DictEffect = libmgr.unitCodeEffects[UniqueDictFirst["고유"]];
             if (Convert.ToString(DictEffect["대각선만 이동"]) == "TRUE") { fUFun.bishop = true; fUFun.rook = false; }
@@ -841,7 +852,7 @@ public class GameMgr : MonoBehaviour
 
             if (Convert.ToString(DictEffect["뒤로 이동 불가"]) == "TRUE")
             {
-                fUFun.unitEffectTxt += "폰";
+                fUFun.unitEffectTxt += ", 폰";
                 fUFun.pawn = true;
             }
             if (Convert.ToString(DictEffect["홀수 차례만 효과"]) == "TRUE")
@@ -951,6 +962,7 @@ public class GameMgr : MonoBehaviour
             fUFun.moveMaxCount = (int)UniqueDict["이동 횟수"] + (int)fUFun.moveCountUpgrade * fUFun.upgradeRank;
             fUFun.minNum = (int)UniqueDict["숫자 최소치"] + (int)fUFun.minNumUpgrade * fUFun.upgradeRank;
             fUFun.maxNum = (int)UniqueDict["숫자 최대치"] + (int)fUFun.maxNumUpgrade * fUFun.upgradeRank;
+            fUFun.unit2DImage = Resources.Load<Sprite>("Image2D/" + fUFun.myCodeNum);
 
             Dictionary<string, object> DictEffect = libmgr.unitCodeEffects[UniqueDictFirst["고유"]];
             if (Convert.ToString(DictEffect["대각선만 이동"]) == "TRUE") { fUFun.bishop = true; fUFun.rook = false; }
@@ -965,7 +977,7 @@ public class GameMgr : MonoBehaviour
 
             if (Convert.ToString(DictEffect["뒤로 이동 불가"]) == "TRUE")
             {
-                fUFun.unitEffectTxt += "폰";
+                fUFun.unitEffectTxt += ", 폰";
                 fUFun.pawn = true;
             }
             if (Convert.ToString(DictEffect["홀수 차례만 효과"]) == "TRUE")
@@ -1140,6 +1152,8 @@ public class GameMgr : MonoBehaviour
             {
                 lose = true;
                 losePanel.SetActive(true);
+                loseplayerUnitFight2D.sprite = a.GetComponent<Units>().unit2DImage;
+                loseenermyUnitFight2D.sprite = b.GetComponent<Units>().unit2DImage;
             }
             else
             {
@@ -1153,6 +1167,9 @@ public class GameMgr : MonoBehaviour
                     win = true;
                     libmgr.money += 100 * (libmgr.stageLevelCount+1);
                     winPanel.SetActive(true);
+                    winplayerUnitFight2D.sprite = a.GetComponent<Units>().unit2DImage;
+                    winenermyUnitFight2D.sprite = b.GetComponent<Units>().unit2DImage;
+                    moneyTxt.text = "+ " + 100 * (libmgr.stageLevelCount + 1) + " <color=yellow>G</color>";
                 }
             }
         }
@@ -1161,6 +1178,8 @@ public class GameMgr : MonoBehaviour
             FightPanel.SetActive(true);
             playerdiceTxt.text = "?";
             enermydiceTxt.text = "?";
+            playerUnitFight2D.sprite = a.GetComponent<Units>().unit2DImage;
+            enermyUnitFight2D.sprite = b.GetComponent<Units>().unit2DImage;
             yield return new WaitForSecondsRealtime(1f);
             int aRnd = UnityEngine.Random.Range(a.GetComponent<Units>().minNum, a.GetComponent<Units>().maxNum + 1);
             playerdiceTxt.text = aRnd.ToString();
@@ -1170,19 +1189,36 @@ public class GameMgr : MonoBehaviour
             //플레이어 유닛 승리
             if (aRnd > bRnd)
             {
-                Destroy(b);
                 enermyUnits.Remove(b);
                 a.GetComponent<Units>().maxNum -= bRnd;
                 a.GetComponent<Units>().minNum -= bRnd;
                 if (a.GetComponent<Units>().minNum < 0)
                 { a.GetComponent<Units>().minNum = 0; }
+                a.GetComponent<Units>().halfNum = (a.GetComponent<Units>().maxNum + a.GetComponent<Units>().minNum) / 2;
+                if (b.GetComponent<Units>().playerHeart)
+                {
+                    if (libmgr.stageLevelCount == 6)
+                    {
+                        win = true;
+                        Application.Quit();
+                    }
+                    else
+                    {
+                        win = true;
+                        libmgr.money += 100 * (libmgr.stageLevelCount + 1);
+                        winPanel.SetActive(true);
+                        winplayerUnitFight2D.sprite = a.GetComponent<Units>().unit2DImage;
+                        winenermyUnitFight2D.sprite = b.GetComponent<Units>().unit2DImage;
+                        moneyTxt.text = "+ " + 100 * (libmgr.stageLevelCount + 1) + " <color=yellow>G</color>";
+                    }
+                }
+                Destroy(b);
             }
             //에너미 유닛 승리
             else if (bRnd > aRnd)
             {
                 if (a.GetComponent<Units>().moveAble) turnMove++;
 
-                Destroy(a);
                 playerUnits.Remove(a);
                 var targetUnitData = libmgr.playerUnitsData.Find(unitData => unitData[0] == a.GetComponent<Units>().myCodeNum &&
                 Convert.ToInt32(unitData[1]) == a.GetComponent<Units>().upgradeRank);
@@ -1193,21 +1229,54 @@ public class GameMgr : MonoBehaviour
                 b.GetComponent<Units>().maxNum -= aRnd;
                 b.GetComponent<Units>().minNum -= aRnd;
                 if (b.GetComponent<Units>().minNum < 0)
-                { b.GetComponent<Units>().minNum = 0; }               
+                { b.GetComponent<Units>().minNum = 0; }
+                b.GetComponent<Units>().halfNum = (b.GetComponent<Units>().maxNum + b.GetComponent<Units>().minNum) / 2;
+                if (a.GetComponent<Units>().playerHeart)
+                {
+                    lose = true;
+                    losePanel.SetActive(true);
+                    loseplayerUnitFight2D.sprite = a.GetComponent<Units>().unit2DImage;
+                    loseenermyUnitFight2D.sprite = b.GetComponent<Units>().unit2DImage;
+                }
+                Destroy(a);
             }
             //무승부 양자 파괴
             else
             {              
-                Destroy(a);
                 var targetUnitData = libmgr.playerUnitsData.Find(unitData => unitData[0] == a.GetComponent<Units>().myCodeNum &&
                 Convert.ToInt32(unitData[1]) == a.GetComponent<Units>().upgradeRank);
                 if (targetUnitData != null)
                 {
                     libmgr.playerUnitsData.Remove(targetUnitData);
                 }
-                Destroy(b);
                 playerUnits.Remove(a);
-                enermyUnits.Remove(b);      
+                enermyUnits.Remove(b);
+                if (a.GetComponent<Units>().playerHeart && !b.GetComponent<Units>().playerHeart)
+                {
+                    lose = true;
+                    losePanel.SetActive(true);
+                    loseplayerUnitFight2D.sprite = a.GetComponent<Units>().unit2DImage;
+                    loseenermyUnitFight2D.sprite = b.GetComponent<Units>().unit2DImage;
+                }
+                else if (!a.GetComponent<Units>().playerHeart && b.GetComponent<Units>().playerHeart)
+                {
+                    if (libmgr.stageLevelCount == 6)
+                    {
+                        win = true;
+                        Application.Quit();
+                    }
+                    else
+                    {
+                        win = true;
+                        libmgr.money += 100 * (libmgr.stageLevelCount + 1);
+                        winPanel.SetActive(true);
+                        winplayerUnitFight2D.sprite = a.GetComponent<Units>().unit2DImage;
+                        winenermyUnitFight2D.sprite = b.GetComponent<Units>().unit2DImage;
+                        moneyTxt.text = "+ " + 100 * (libmgr.stageLevelCount + 1) + " <color=yellow>G</color>";
+                    }
+                }
+                Destroy(a);
+                Destroy(b);
             }
             FightPanel.SetActive(false);
         }

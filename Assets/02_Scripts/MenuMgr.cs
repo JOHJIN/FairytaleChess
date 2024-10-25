@@ -28,6 +28,11 @@ public class MenuMgr : MonoBehaviour
     }
     public void characterSelectBtn()
     {
+        library.playerUnitsData.Clear();
+        library.bossToMeet.Clear();
+        library.stageLevelCount = 0;
+        library.money = 0;
+        library.playerableNum = 0;
         CharacterSelectPanel.SetActive(true);
         strBtn.enabled = false;
     }

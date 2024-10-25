@@ -1,4 +1,5 @@
 using JetBrains.Annotations;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.VisualScripting;
@@ -47,39 +48,26 @@ public class Units2DData : MonoBehaviour
     public int morePower = 0;
     public int powerUpTotem = 0;
 
-    float times = 0;
-    public bool timecheck = false;
     public GameObject imformation2DChar;
     public GameObject canvas;
+
+    public Image unit2DImage;
+    public GameObject unitEffectTxt;
+    public GameObject unitMoveTxt;
+    public GameObject unitNumTxt;
+    public GameObject unitNameTxt;
+
+    public string itsEffect;
+
     // Start is called before the first frame update
     void Start()
     {
         canvas = GameObject.Find("Canvas");
-        gameObject.GetComponentInChildren<Text>().text = minNum + " ~ " + maxNum;
     }
 
     // Update is called once per frame
     void Update()
     {
-        //if (UnityEngine.Input.GetMouseButtonDown(0))
-        //{
-        //    timecheck = true;
-        //}
-        //if (timecheck)
-        //{
-        //    times += Time.deltaTime;
-        //    if (times > 1f)
-        //    {
-        //        information2D();
-        //        timecheck = false;
-        //        times = 0f;
-        //    }
-        //}
-        //if (UnityEngine.Input.GetMouseButtonUp(0))
-        //{
-        //    timecheck = false;
-        //    times = 0;
-        //}
     }
 
     public void information2D()

@@ -14,6 +14,7 @@ public class GmrUI : MonoBehaviour
     public Image whosTurnImage;
 
     public GameObject selectUnitPanel;
+    public Image selectUnitImage;
     public Text selectNameTxt;
     public Text selectEffectTxt;
     public Text selectMoveTxt;
@@ -31,10 +32,11 @@ public class GmrUI : MonoBehaviour
         if (gmr.selectUnit != null)
         {
             selectUnitPanel.SetActive(true);
-            selectNameTxt.text = gmr.selectUnit.GetComponent<Units>().name;
+            selectNameTxt.text = gmr.selectUnit.GetComponent<Units>().name + " + " + gmr.selectUnit.GetComponent<Units>().upgradeRank;
             selectEffectTxt.text = gmr.selectUnit.GetComponent<Units>().unitEffectTxt;
             selectMoveTxt.text = "Move : " + gmr.selectUnit.GetComponent<Units>().moveMaxCount;
             selectNumTxt.text = gmr.selectUnit.GetComponent<Units>().minNum + " ~ " + gmr.selectUnit.GetComponent<Units>().maxNum;
+            selectUnitImage.sprite = gmr.selectUnit.GetComponent<Units>().unit2DImage;
             if (gmr.selectUnit.GetComponent<Units>().maxNum == 0)
             {
                 selectNumTxt.text = "-";
@@ -51,19 +53,19 @@ public class GmrUI : MonoBehaviour
         if (gmr.placementTime)
         {
             whosTurnTxt.text = "Player Turn";
-            whosTurnImage.color = Color.cyan;
+            whosTurnImage.sprite = Resources.Load<Sprite>("UIColor/BlueUI");
         }
         else
         {
             if (gmr.playerTurn)
             {
                 whosTurnTxt.text = "Enermy Turn";
-                whosTurnImage.color = Color.red;
+                whosTurnImage.sprite = Resources.Load<Sprite>("UIColor/RedUI");
             }
             else
             {
                 whosTurnTxt.text = "Player Turn";
-                whosTurnImage.color = Color.cyan;
+                whosTurnImage.sprite = Resources.Load<Sprite>("UIColor/BlueUI");
             }
         }
     }
