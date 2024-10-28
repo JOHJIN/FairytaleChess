@@ -59,9 +59,12 @@ public class Units : MonoBehaviour
     Vector3 zeroS;
 
     public bool moving = false;
+
+    GameObject selectEffect;
     void Start()
     {
         libmgr = gmr.libmgr;
+        selectEffect = transform.GetChild(1).gameObject;
     }
 
 
@@ -112,6 +115,15 @@ public class Units : MonoBehaviour
         if (upgradeCode != null && transform.position.z >= gmr.mapMaxZ)
         {
             UpgradeThisUnit();
+        }
+
+        if (gmr.selectUnit == this.gameObject)
+        {
+            selectEffect.SetActive(true);
+        }
+        else 
+        {
+            selectEffect.SetActive(false);
         }
     }
 

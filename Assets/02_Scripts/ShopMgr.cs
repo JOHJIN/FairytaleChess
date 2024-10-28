@@ -21,10 +21,27 @@ public class ShopMgr : MonoBehaviour
 
     public GameObject gggg;
     public GameObject gggg2;
+
+    public AudioSource playerAudio;
+    public AudioClip clickAudioClip;
+    public AudioClip charactSelectAudio;
+    public AudioClip backgroundAudio;
+
+    public GameObject soundPanel;
+    public Slider mainSoundBar;
+    public Slider backGroundSoundBar;
+    public Slider effectSoundBar;
+
+    public GameObject gameFlow;
     // Start is called before the first frame update
     void Start()
     {
         libmgr = GameObject.Find("LibMgr").GetComponent<LibMgr>();
+        gameFlow = GameObject.Find("GameFlow");
+        mainSoundBar.value = gameFlow.GetComponent<GameFlow>().mainSoundSize;
+        backGroundSoundBar.value = gameFlow.GetComponent<GameFlow>().bgmSoundSize;
+        effectSoundBar.value = gameFlow.GetComponent<GameFlow>().effectSoundSize;
+        playerAudio.PlayOneShot(backgroundAudio, gameFlow.GetComponent<GameFlow>().bgmSoundSize);
     }
 
     // Update is called once per frame
@@ -107,5 +124,14 @@ public class ShopMgr : MonoBehaviour
         selectMyUnit2D = null;
         Destroy(gggg);
         Destroy(gggg2);
+    }
+
+    public void clickSound()
+    {
+        playerAudio.PlayOneShot(clickAudioClip, gameFlow.GetComponent<GameFlow>().effectSoundSize);
+    }
+    public void cSelectAudio()
+    {
+        playerAudio.PlayOneShot(charactSelectAudio, gameFlow.GetComponent<GameFlow>().effectSoundSize);
     }
 }

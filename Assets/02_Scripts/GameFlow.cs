@@ -9,6 +9,10 @@ public class GameFlow : MonoBehaviour
     public GameObject CharacterSelectPanel;
 
     public GameObject libmgr;
+
+    public float mainSoundSize = 1f;
+    public float bgmSoundSize = 1f;
+    public float effectSoundSize = 1f;
     void Start()
     {
         libmgr = GameObject.Find("LibMgr");

@@ -13,18 +13,38 @@ public class MenuMgr : MonoBehaviour
     public int charNum = 100;
 
     public Button strBtn;
+
+    public AudioSource playerAudio;
+    public AudioClip clickAudioClip;
+    public AudioClip charactSelectAudio;
+    public AudioClip backgroundAudio;
+
+    public GameObject soundPanel;
+    public Slider mainSoundBar;
+    public Slider backGroundSoundBar;
+    public Slider effectSoundBar;
     // Start is called before the first frame update
     void Start()
     {
         gameFlow = GameObject.Find("GameFlow");
         library = GameObject.Find("LibMgr").GetComponent<LibMgr>();
         charNum = 100;
+        mainSoundBar.value = gameFlow.GetComponent<GameFlow>().mainSoundSize;
+        backGroundSoundBar.value = gameFlow.GetComponent<GameFlow>().bgmSoundSize;
+        effectSoundBar.value = gameFlow.GetComponent<GameFlow>().effectSoundSize;
+        playerAudio.PlayOneShot(backgroundAudio, gameFlow.GetComponent<GameFlow>().bgmSoundSize);
     }
 
     // Update is called once per frame
     void Update()
     {
-        
+        playerAudio.volume = gameFlow.GetComponent<GameFlow>().mainSoundSize;
+        if (soundPanel)
+        {
+            gameFlow.GetComponent<GameFlow>().mainSoundSize = mainSoundBar.value;
+            gameFlow.GetComponent<GameFlow>().bgmSoundSize = backGroundSoundBar.value;
+            gameFlow.GetComponent<GameFlow>().effectSoundSize = effectSoundBar.value;
+        }
     }
     public void characterSelectBtn()
     {
@@ -57,5 +77,19 @@ public class MenuMgr : MonoBehaviour
     public void ContinueBtn()
     {
         SceneManager.LoadScene(2);
+    }
+
+    public void gameQuitBtn()
+    {
+        Application.Quit();
+    }
+
+    public void clickSound()
+    {
+        playerAudio.PlayOneShot(clickAudioClip, gameFlow.GetComponent<GameFlow>().effectSoundSize);
+    }
+    public void cSelectAudio()
+    {
+        playerAudio.PlayOneShot(charactSelectAudio, gameFlow.GetComponent<GameFlow>().effectSoundSize);
     }
 }

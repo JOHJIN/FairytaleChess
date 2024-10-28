@@ -71,8 +71,32 @@ public class GameMgr : MonoBehaviour
     public Image loseplayerUnitFight2D;
     public Image loseenermyUnitFight2D;
     public Text moneyTxt;
+
+    public AudioSource playerAudio;
+    public AudioClip clickAudioClip;
+    public AudioClip charactSelectAudio;
+    public AudioClip backgroundAudio1;
+    public AudioClip backgroundAudio2;
+    public AudioClip backgroundAudio3;
+
+    public GameObject soundPanel;
+    public Slider mainSoundBar;
+    public Slider backGroundSoundBar;
+    public Slider effectSoundBar;
+
+    public GameObject gameFlow;
     void Start()
     {
+        gameFlow = GameObject.Find("GameFlow");
+        mainSoundBar.value = gameFlow.GetComponent<GameFlow>().mainSoundSize;
+        backGroundSoundBar.value = gameFlow.GetComponent<GameFlow>().bgmSoundSize;
+        effectSoundBar.value = gameFlow.GetComponent<GameFlow>().effectSoundSize;
+        if (libmgr.stageLevelCount < 2)
+            playerAudio.PlayOneShot(backgroundAudio1, gameFlow.GetComponent<GameFlow>().bgmSoundSize);
+        else if(libmgr.stageLevelCount > 3)
+            playerAudio.PlayOneShot(backgroundAudio3, gameFlow.GetComponent<GameFlow>().bgmSoundSize);
+        else
+            playerAudio.PlayOneShot(backgroundAudio2, gameFlow.GetComponent<GameFlow>().bgmSoundSize);
         StartCoroutine(gmrStartCorou());
         bosstype = UnityEngine.Random.Range(-1, 2);
     }
@@ -3300,6 +3324,15 @@ public class GameMgr : MonoBehaviour
             }
             aiSelect = true;
         }
+    }
+
+    public void clickSound()
+    {
+        playerAudio.PlayOneShot(clickAudioClip, gameFlow.GetComponent<GameFlow>().effectSoundSize);
+    }
+    public void cSelectAudio()
+    {
+        playerAudio.PlayOneShot(charactSelectAudio, gameFlow.GetComponent<GameFlow>().effectSoundSize);
     }
     //µÚÁý±â
 }
