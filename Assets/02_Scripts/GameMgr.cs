@@ -91,13 +91,13 @@ public class GameMgr : MonoBehaviour
         mainSoundBar.value = gameFlow.GetComponent<GameFlow>().mainSoundSize;
         backGroundSoundBar.value = gameFlow.GetComponent<GameFlow>().bgmSoundSize;
         effectSoundBar.value = gameFlow.GetComponent<GameFlow>().effectSoundSize;
+        StartCoroutine(gmrStartCorou());
         if (libmgr.stageLevelCount < 2)
             playerAudio.PlayOneShot(backgroundAudio1, gameFlow.GetComponent<GameFlow>().bgmSoundSize);
-        else if(libmgr.stageLevelCount > 3)
+        else if (libmgr.stageLevelCount > 3)
             playerAudio.PlayOneShot(backgroundAudio3, gameFlow.GetComponent<GameFlow>().bgmSoundSize);
         else
             playerAudio.PlayOneShot(backgroundAudio2, gameFlow.GetComponent<GameFlow>().bgmSoundSize);
-        StartCoroutine(gmrStartCorou());
         bosstype = UnityEngine.Random.Range(-1, 2);
     }
 

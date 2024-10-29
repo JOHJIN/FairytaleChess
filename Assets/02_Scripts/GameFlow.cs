@@ -21,7 +21,8 @@ public class GameFlow : MonoBehaviour
 
     void Update()
     {
-        
+        if (Input.GetKeyDown(KeyCode.Escape))
+        { Application.Quit(); }
     }
     private void Awake()
     {

@@ -59,16 +59,8 @@ public class MenuMgr : MonoBehaviour
 
     public void charSelectNum(int a)
     {
-        if (a != charNum)
-        {
-            charNum = a;
-            strBtn.enabled = true;
-        }
-        else if (a == charNum)
-        {
-            charNum = 100;
-            strBtn.enabled = false;
-        }
+        charNum = a;
+        strBtn.enabled = true;
     }
     public void charcterSelectToStart()
     {
