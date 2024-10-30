@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.VisualScripting;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 using UnityEngine.UI;
@@ -29,6 +30,8 @@ public class GameMgr : MonoBehaviour
 
     public bool playerTurn = true;
     public float turnTime = 0;
+    public bool turnOdd = true;
+    public Text oddOrEven;
 
     public bool placementTime = true;
 
@@ -85,6 +88,10 @@ public class GameMgr : MonoBehaviour
     public Slider effectSoundBar;
 
     public GameObject gameFlow;
+
+    float sensitivity = 250f;
+    float roY = 0;
+    float roX = 0;
     void Start()
     {
         gameFlow = GameObject.Find("GameFlow");
@@ -103,6 +110,7 @@ public class GameMgr : MonoBehaviour
 
     void Update()
     {
+        //좌클릭
         if (Input.GetMouseButtonDown(0))
         {
             RaycastHit hit;
@@ -111,7 +119,7 @@ public class GameMgr : MonoBehaviour
             {
                 if (hit.collider.tag == "Friendly" || hit.collider.tag == "Player")
                 {
-                    if (selectOn && selectUnit.GetComponent<Units>().changePos)
+                    if (selectOn && selectUnit.GetComponent<Units>().changePos && selectUnit.GetComponent<Units>().moveAble)
                     {
                         selectUnit.GetComponent<Units>().changingPosition(selectUnit, hit.collider.gameObject);
                     }
@@ -123,8 +131,17 @@ public class GameMgr : MonoBehaviour
                 }
                 else if (hit.collider.tag == "Enermy" || hit.collider.tag == "Boss")
                 {
-                    selectUnit = hit.collider.gameObject;
-                    selectOn = false;
+                    if (selectOn && selectUnit.GetComponent<Units>().moveAble && selectUnit.GetComponent<Units>().frozen && playerTurn)
+                    {
+                        selectUnit.GetComponent<Units>().moveAble = false;
+                        turnMove += 1;
+                        hit.collider.gameObject.GetComponent<Units>().nextMoveFalse = true;
+                    }
+                    else
+                    {
+                        selectUnit = hit.collider.gameObject;
+                        selectOn = false;
+                    }
                 }
                 else if (selectOn && hit.collider.tag == "Tile")
                 {
@@ -379,8 +396,16 @@ public class GameMgr : MonoBehaviour
                 selectOn = false;
                 turnTime = 0;
                 gmrUi.moveCountTxtChange(turnMaxMove - turnMove);
-                enermyUnits.ForEach(unit => unit.GetComponent<Units>().moveAble = true);
-                enermyUnits.ForEach(unit => unit.GetComponent<Units>().moveCount = 0);
+                for (int i = 0; i < enermyUnits.Count; i++)
+                {
+                    if (enermyUnits[i].GetComponent<Units>().nextMoveFalse)
+                    { }
+                    else
+                    {
+                        enermyUnits[i].GetComponent<Units>().moveAble = true;
+                        enermyUnits[i].GetComponent<Units>().moveCount = 0;
+                    }
+                }
                 AiTurn = true;
                 move1EnermyAi = null;
                 aiSelect = false;
@@ -398,11 +423,29 @@ public class GameMgr : MonoBehaviour
                 selectOn = false;
                 turnTime = 0;
                 gmrUi.moveCountTxtChange(turnMaxMove - turnMove);
-                playerUnits.ForEach(unit => unit.GetComponent<Units>().moveAble = true);
-                playerUnits.ForEach(unit => unit.GetComponent<Units>().moveCount = 0);
+                for (int i = 0; i < playerUnits.Count; i++)
+                {
+                    if (playerUnits[i].GetComponent<Units>().nextMoveFalse)
+                    { }
+                    else
+                    {
+                        playerUnits[i].GetComponent<Units>().moveAble = true;
+                        playerUnits[i].GetComponent<Units>().moveCount = 0;
+                    }
+                }
                 AiTurn = false;
                 move1EnermyAi = null;
                 aiSelect = false;
+                if (oddOrEven)
+                {
+                    oddOrEven.text = "Even";
+                    turnOdd = false;
+                }
+                else 
+                {
+                    oddOrEven.text = "Odd";
+                    turnOdd = true;
+                }
             }
         }
 
@@ -434,11 +477,29 @@ public class GameMgr : MonoBehaviour
                 turnMove = 0;
                 selectOn = false;
                 gmrUi.moveCountTxtChange(turnMaxMove - turnMove);
-                playerUnits.ForEach(unit => unit.GetComponent<Units>().moveAble = true);
-                playerUnits.ForEach(unit => unit.GetComponent<Units>().moveCount = 0);
+                for (int i = 0; i < playerUnits.Count; i++)
+                {
+                    if (playerUnits[i].GetComponent<Units>().nextMoveFalse)
+                    { }
+                    else
+                    {
+                        playerUnits[i].GetComponent<Units>().moveAble = true;
+                        playerUnits[i].GetComponent<Units>().moveCount = 0;
+                    }
+                }
                 AiTurn = false;
                 move1EnermyAi = null;
                 aiSelect = false;
+                if (oddOrEven)
+                {
+                    oddOrEven.text = "Even";
+                    turnOdd = false;
+                }
+                else
+                {
+                    oddOrEven.text = "Odd";
+                    turnOdd = true;
+                }
             }
             if (turnMove >= turnMaxMove)
             {
@@ -449,10 +510,78 @@ public class GameMgr : MonoBehaviour
                 turnMove = 0;
                 selectOn = false;
                 gmrUi.moveCountTxtChange(turnMaxMove - turnMove);
-                playerUnits.ForEach(unit => unit.GetComponent<Units>().moveAble = true);
-                playerUnits.ForEach(unit => unit.GetComponent<Units>().moveCount = 0);
+                for (int i = 0; i < playerUnits.Count; i++)
+                {
+                    if (playerUnits[i].GetComponent<Units>().nextMoveFalse)
+                    { }
+                    else
+                    {
+                        playerUnits[i].GetComponent<Units>().moveAble = true;
+                        playerUnits[i].GetComponent<Units>().moveCount = 0;
+                    }
+                }
                 AiTurn = false;
+                if (oddOrEven)
+                {
+                    oddOrEven.text = "Even";
+                    turnOdd = false;
+                }
+                else
+                {
+                    oddOrEven.text = "Odd";
+                    turnOdd = true;
+                }
             }
+        }
+
+        // 휠 마우스 시점 이동
+        float wheel = Input.GetAxis("Mouse ScrollWheel");
+        if (wheel > 0 ) 
+        {
+            if (mainCam.transform.position.y > 2)
+            {
+                mainCam.transform.position += new Vector3(0, -0.2f, -0.08f);
+                mainCam.transform.eulerAngles += new Vector3(-1f, 0, 0);
+            }
+        }
+        else if (wheel < 0) 
+        {
+            if (mainCam.transform.position.y < mapMaxZ / 2 + 8)
+            {
+                mainCam.transform.position += new Vector3(0, 0.2f, 0.08f);
+                mainCam.transform.eulerAngles += new Vector3(1f, 0, 0);
+            }
+        }
+        //시점 복구
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            mainCam.transform.position = new Vector3(mapMaxX / 2 + 1, mapMaxZ / 2 + 8, mapMaxZ / 2 - 0.2f * mapMaxZ);
+            mainCam.transform.rotation = Quaternion.Euler(80, 0, 0);
+        }
+        // 우클릭 마우스 시점 이동
+        if (Input.GetMouseButton(1))
+        {
+            float mouseMoveValueX = Input.GetAxis("Mouse X"); // 마우스 뛰어쓰고 X
+            float mouseMoveValueY = Input.GetAxis("Mouse Y");
+
+            roY += mouseMoveValueX * sensitivity * Time.deltaTime;
+            roX += mouseMoveValueY * sensitivity * Time.deltaTime;
+
+            mainCam.transform.eulerAngles = new Vector3(80 -roX, roY, 0);
+
+            if (roX > 30f)
+                roX = 30f;
+            if (roX < -5f)
+                roX = -5f;
+            if (roY < -60)
+                roY = -60;
+            if (roY > 60)
+                roY = 60;
+        }
+        //엔터 턴 넘기기
+        if (Input.GetKeyDown(KeyCode.Return))
+        {
+            PlayerTurnOverBtn();
         }
     }
 
@@ -462,6 +591,7 @@ public class GameMgr : MonoBehaviour
         selectUnit.GetComponent<Units>().Move(go);
     }
 
+    //턴 종료 버튼
     public void PlayerTurnOverBtn()
     {
         //배치 끝났을 시 버튼 클릭
@@ -483,8 +613,18 @@ public class GameMgr : MonoBehaviour
             turnMove = 0;
             selectOn = false;
             gmrUi.moveCountTxtChange(turnMaxMove - turnMove);
-            enermyUnits.ForEach(unit => unit.GetComponent<Units>().moveAble = true);
-            enermyUnits.ForEach(unit => unit.GetComponent<Units>().moveCount = 0);
+            for (int i = 0; i < enermyUnits.Count; i++)
+            {
+                if (enermyUnits[i].GetComponent<Units>().nextMoveFalse)
+                {
+                    enermyUnits[i].GetComponent<Units>().nextMoveFalse = false;
+                }
+                else 
+                {
+                    enermyUnits[i].GetComponent<Units>().moveAble = true;
+                    enermyUnits[i].GetComponent<Units>().moveCount = 0;
+                }
+            }
             AiTurn = true;
             canMove = true;
             move1EnermyAi = null;
@@ -568,13 +708,13 @@ public class GameMgr : MonoBehaviour
             }
             if (Convert.ToString(DictEffect["공격시 상대 숫자 변동"]) != "")
             {
-                fUFun.unitEffectTxt += ", 저주";
                 fUFun.attackMinusPow = Convert.ToInt32(DictEffect["공격시 상대 숫자 변동"]);
+                fUFun.unitEffectTxt += ", 저주" + " - " + fUFun.attackMinusPow;
             }
             if (Convert.ToString(DictEffect["자신 숫자 변동"]) != "")
             {
-                fUFun.unitEffectTxt += ", 축복";
                 fUFun.morePower = Convert.ToInt32(DictEffect["자신 숫자 변동"]);
+                fUFun.unitEffectTxt += ", 축복" + " + " + fUFun.morePower;
             }
             if (Convert.ToString(DictEffect["죽으면 패배"]) == "TRUE")
             {
@@ -618,8 +758,8 @@ public class GameMgr : MonoBehaviour
             }
             if (Convert.ToString(DictEffect["다른 아군 숫자 변동"]) != "")
             {
-                fUFun.unitEffectTxt += ", 아군 축복";
                 fUFun.powerUpTotem = Convert.ToInt32(DictEffect["다른 아군 숫자 변동"]);
+                fUFun.unitEffectTxt += ", 아군 축복" + " + " + fUFun.powerUpTotem;
             }
             if (Convert.ToString(DictEffect["못 움직임 이동 대신"]) == "TRUE")
             {
@@ -649,6 +789,34 @@ public class GameMgr : MonoBehaviour
         canMove = true;
         playerUnits.ForEach(pUnits => pUnits.GetComponent<Units>().moveAble = true); // 플레이어 유닛 전원 무브 가능 상태로 람다식
         yield return new WaitForSecondsRealtime(0.5f);
+        for (int i = 0; i < playerUnits.Count; i++)
+        {
+            if (playerUnits[i].GetComponent<Units>().powerUpTotem != 0)
+            {
+                for (int j = 0; j < playerUnits.Count; j++)
+                {
+                    if (i != j)
+                    {
+                        playerUnits[j].GetComponent<Units>().minNum += playerUnits[i].GetComponent<Units>().powerUpTotem;
+                        playerUnits[j].GetComponent<Units>().maxNum += playerUnits[i].GetComponent<Units>().powerUpTotem;
+                    }
+                }
+            }
+        }
+        for (int i = 0; i < enermyUnits.Count; i++)
+        {
+            if (enermyUnits[i].GetComponent<Units>().powerUpTotem != 0)
+            {
+                for (int j = 0; j < enermyUnits.Count; j++)
+                {
+                    if (i != j)
+                    {
+                        enermyUnits[j].GetComponent<Units>().minNum += enermyUnits[i].GetComponent<Units>().powerUpTotem;
+                        enermyUnits[j].GetComponent<Units>().maxNum += enermyUnits[i].GetComponent<Units>().powerUpTotem;
+                    }
+                }
+            }
+        }
     }
 
     //배치 종료후 배치 안한 유닛 파괴
@@ -676,7 +844,10 @@ public class GameMgr : MonoBehaviour
         yield return null;
         //적 맵 제작
         GameObject tileMap = Instantiate(tileInMap);
-        tileMap.transform.position = new Vector3(3, -0.5f, 3);
+        tileMap.transform.position = new Vector3(mapMaxX/2 +1, -0.5f, mapMaxZ/2);
+        tileMap.GetComponentInChildren<Renderer>().material.mainTexture = Resources.Load("Textures/bossMap_" + bossMapDict["ID"]) as Texture;
+        GameObject land = GameObject.Find("Plane");
+        land.transform.localScale = new Vector3((mapMaxX+mapMaxZ)/3, 1, (mapMaxX + mapMaxZ) / 3);
         for (int i = 1; i <= mapMaxX; i++)
         {
             for (int j = 1; j <= mapMaxZ; j++)
@@ -781,13 +952,13 @@ public class GameMgr : MonoBehaviour
             }
             if (Convert.ToString(DictEffect["공격시 상대 숫자 변동"]) != "")
             {
-                fUFun.unitEffectTxt += ", 저주";
                 fUFun.attackMinusPow = Convert.ToInt32(DictEffect["공격시 상대 숫자 변동"]);
+                fUFun.unitEffectTxt += ", 저주" + " - " + fUFun.attackMinusPow;
             }
             if (Convert.ToString(DictEffect["자신 숫자 변동"]) != "")
             {
-                fUFun.unitEffectTxt += ", 축복";
                 fUFun.morePower = Convert.ToInt32(DictEffect["자신 숫자 변동"]);
+                fUFun.unitEffectTxt += ", 축복" + " + " + fUFun.morePower;
             }
             if (Convert.ToString(DictEffect["죽으면 패배"]) == "TRUE")
             {
@@ -831,8 +1002,8 @@ public class GameMgr : MonoBehaviour
             }
             if (Convert.ToString(DictEffect["다른 아군 숫자 변동"]) != "")
             {
-                fUFun.unitEffectTxt += ", 아군 축복";
                 fUFun.powerUpTotem = Convert.ToInt32(DictEffect["다른 아군 숫자 변동"]);
+                fUFun.unitEffectTxt += ", 아군 축복" + " + " + fUFun.powerUpTotem;
             }
             if (Convert.ToString(DictEffect["못 움직임 이동 대신"]) == "TRUE")
             {
@@ -906,13 +1077,13 @@ public class GameMgr : MonoBehaviour
             }
             if (Convert.ToString(DictEffect["공격시 상대 숫자 변동"]) != "")
             {
-                fUFun.unitEffectTxt += ", 저주";
                 fUFun.attackMinusPow = Convert.ToInt32(DictEffect["공격시 상대 숫자 변동"]);
+                fUFun.unitEffectTxt += ", 저주" + " - " + fUFun.attackMinusPow;
             }
             if (Convert.ToString(DictEffect["자신 숫자 변동"]) != "")
             {
-                fUFun.unitEffectTxt += ", 축복";
                 fUFun.morePower = Convert.ToInt32(DictEffect["자신 숫자 변동"]);
+                fUFun.unitEffectTxt += ", 축복" + " + " + fUFun.morePower;
             }
             if (Convert.ToString(DictEffect["죽으면 패배"]) == "TRUE")
             {
@@ -956,8 +1127,8 @@ public class GameMgr : MonoBehaviour
             }
             if (Convert.ToString(DictEffect["다른 아군 숫자 변동"]) != "")
             {
-                fUFun.unitEffectTxt += ", 아군 축복";
                 fUFun.powerUpTotem = Convert.ToInt32(DictEffect["다른 아군 숫자 변동"]);
+                fUFun.unitEffectTxt += ", 아군 축복" + " + " + fUFun.powerUpTotem;
             }
             if (Convert.ToString(DictEffect["못 움직임 이동 대신"]) == "TRUE")
             {
@@ -1031,13 +1202,13 @@ public class GameMgr : MonoBehaviour
             }
             if (Convert.ToString(DictEffect["공격시 상대 숫자 변동"]) != "")
             {
-                fUFun.unitEffectTxt += ", 저주";
                 fUFun.attackMinusPow = Convert.ToInt32(DictEffect["공격시 상대 숫자 변동"]);
+                fUFun.unitEffectTxt += ", 저주" + " - " + fUFun.attackMinusPow;
             }
             if (Convert.ToString(DictEffect["자신 숫자 변동"]) != "")
             {
-                fUFun.unitEffectTxt += ", 축복";
                 fUFun.morePower = Convert.ToInt32(DictEffect["자신 숫자 변동"]);
+                fUFun.unitEffectTxt += ", 축복" + " + " + fUFun.morePower;
             }
             if (Convert.ToString(DictEffect["죽으면 패배"]) == "TRUE")
             {
@@ -1081,8 +1252,8 @@ public class GameMgr : MonoBehaviour
             }
             if (Convert.ToString(DictEffect["다른 아군 숫자 변동"]) != "")
             {
-                fUFun.unitEffectTxt += ", 아군 축복";
                 fUFun.powerUpTotem = Convert.ToInt32(DictEffect["다른 아군 숫자 변동"]);
+                fUFun.unitEffectTxt += ", 아군 축복" + " + " + fUFun.powerUpTotem;
             }
             if (Convert.ToString(DictEffect["못 움직임 이동 대신"]) == "TRUE")
             {
@@ -1093,7 +1264,7 @@ public class GameMgr : MonoBehaviour
             fUFun.wakeUpUnit();
             enermyUnits.Add(fU);
         }
-        mainCam.transform.position = new Vector3(mapMaxX / 2 + 0.5f, mapMaxZ + 2, mapMaxZ / 2);
+        mainCam.transform.position = new Vector3(mapMaxX / 2 +1, mapMaxZ/2 + 8, mapMaxZ / 2 - 0.2f * mapMaxZ);
     }
 
     //보스 유닛 배치
@@ -1205,9 +1376,9 @@ public class GameMgr : MonoBehaviour
             playerUnitFight2D.sprite = a.GetComponent<Units>().unit2DImage;
             enermyUnitFight2D.sprite = b.GetComponent<Units>().unit2DImage;
             yield return new WaitForSecondsRealtime(1f);
-            int aRnd = UnityEngine.Random.Range(a.GetComponent<Units>().minNum, a.GetComponent<Units>().maxNum + 1);
+            int aRnd = UnityEngine.Random.Range(a.GetComponent<Units>().minNum + a.GetComponent<Units>().morePower, a.GetComponent<Units>().maxNum + a.GetComponent<Units>().morePower + 1);
             playerdiceTxt.text = aRnd.ToString();
-            int bRnd = UnityEngine.Random.Range(b.GetComponent<Units>().minNum, b.GetComponent<Units>().maxNum + 1);
+            int bRnd = UnityEngine.Random.Range(b.GetComponent<Units>().minNum + b.GetComponent<Units>().morePower, b.GetComponent<Units>().maxNum + b.GetComponent<Units>().morePower + 1);
             enermydiceTxt.text = bRnd.ToString();
             yield return new WaitForSecondsRealtime(2f);
             //플레이어 유닛 승리
@@ -1219,6 +1390,8 @@ public class GameMgr : MonoBehaviour
                 if (a.GetComponent<Units>().minNum < 0)
                 { a.GetComponent<Units>().minNum = 0; }
                 a.GetComponent<Units>().halfNum = (a.GetComponent<Units>().maxNum + a.GetComponent<Units>().minNum) / 2;
+                if (b.GetComponent<Units>().poision)
+                { a.GetComponent<Units>().nextMoveFalse = true; }
                 if (b.GetComponent<Units>().playerHeart)
                 {
                     if (libmgr.stageLevelCount == 6)
@@ -1234,6 +1407,20 @@ public class GameMgr : MonoBehaviour
                         winplayerUnitFight2D.sprite = a.GetComponent<Units>().unit2DImage;
                         winenermyUnitFight2D.sprite = b.GetComponent<Units>().unit2DImage;
                         moneyTxt.text = "+ " + 100 * (libmgr.stageLevelCount + 1) + " <color=yellow>G</color>";
+                    }
+                }
+                //파워 토템 파괴
+                if (b.GetComponent<Units>().powerUpTotem != 0)
+                {
+                    for (int i = 0; i < enermyUnits.Count; i++)
+                    {
+                        if (enermyUnits[i] != b)
+                        {
+                            enermyUnits[i].GetComponent<Units>().minNum -= b.GetComponent<Units>().powerUpTotem;
+                            enermyUnits[i].GetComponent<Units>().maxNum -= b.GetComponent<Units>().powerUpTotem;
+                            if (enermyUnits[i].GetComponent<Units>().minNum <= 0) enermyUnits[i].GetComponent<Units>().minNum = 0;
+                            if (enermyUnits[i].GetComponent<Units>().maxNum <= 0) enermyUnits[i].GetComponent<Units>().maxNum = 0;
+                        }
                     }
                 }
                 Destroy(b);
@@ -1255,12 +1442,28 @@ public class GameMgr : MonoBehaviour
                 if (b.GetComponent<Units>().minNum < 0)
                 { b.GetComponent<Units>().minNum = 0; }
                 b.GetComponent<Units>().halfNum = (b.GetComponent<Units>().maxNum + b.GetComponent<Units>().minNum) / 2;
+                if (a.GetComponent<Units>().poision)
+                { b.GetComponent<Units>().nextMoveFalse = true; }
                 if (a.GetComponent<Units>().playerHeart)
                 {
                     lose = true;
                     losePanel.SetActive(true);
                     loseplayerUnitFight2D.sprite = a.GetComponent<Units>().unit2DImage;
                     loseenermyUnitFight2D.sprite = b.GetComponent<Units>().unit2DImage;
+                }
+                //파워 토템 파괴
+                if (a.GetComponent<Units>().powerUpTotem != 0)
+                {
+                    for (int i = 0; i < playerUnits.Count; i++)
+                    {
+                        if (playerUnits[i] != a)
+                        {
+                            playerUnits[i].GetComponent<Units>().minNum -= a.GetComponent<Units>().powerUpTotem;
+                            playerUnits[i].GetComponent<Units>().maxNum -= a.GetComponent<Units>().powerUpTotem;
+                            if (playerUnits[i].GetComponent<Units>().minNum <= 0) playerUnits[i].GetComponent<Units>().minNum = 0;
+                            if (playerUnits[i].GetComponent<Units>().maxNum <= 0) playerUnits[i].GetComponent<Units>().maxNum = 0;
+                        }
+                    }
                 }
                 Destroy(a);
             }
@@ -1297,6 +1500,33 @@ public class GameMgr : MonoBehaviour
                         winplayerUnitFight2D.sprite = a.GetComponent<Units>().unit2DImage;
                         winenermyUnitFight2D.sprite = b.GetComponent<Units>().unit2DImage;
                         moneyTxt.text = "+ " + 100 * (libmgr.stageLevelCount + 1) + " <color=yellow>G</color>";
+                    }
+                }
+                //파워 토템 파괴
+                if (a.GetComponent<Units>().powerUpTotem != 0)
+                {
+                    for (int i = 0; i < playerUnits.Count; i++)
+                    {
+                        if (playerUnits[i] != a)
+                        {
+                            playerUnits[i].GetComponent<Units>().minNum -= a.GetComponent<Units>().powerUpTotem;
+                            playerUnits[i].GetComponent<Units>().maxNum -= a.GetComponent<Units>().powerUpTotem;
+                            if (playerUnits[i].GetComponent<Units>().minNum <= 0) playerUnits[i].GetComponent<Units>().minNum = 0;
+                            if (playerUnits[i].GetComponent<Units>().maxNum <= 0) playerUnits[i].GetComponent<Units>().maxNum = 0;
+                        }
+                    }
+                }
+                if (b.GetComponent<Units>().powerUpTotem != 0)
+                { 
+                    for (int i = 0; i < enermyUnits.Count; i++)
+                    {
+                        if (enermyUnits[i] != b)
+                        {
+                            enermyUnits[i].GetComponent<Units>().minNum -= b.GetComponent<Units>().powerUpTotem;
+                            enermyUnits[i].GetComponent<Units>().maxNum -= b.GetComponent<Units>().powerUpTotem;
+                            if (enermyUnits[i].GetComponent<Units>().minNum <= 0) enermyUnits[i].GetComponent<Units>().minNum = 0;
+                            if (enermyUnits[i].GetComponent<Units>().maxNum <= 0) enermyUnits[i].GetComponent<Units>().maxNum = 0;
+                        }
                     }
                 }
                 Destroy(a);
@@ -3334,5 +3564,172 @@ public class GameMgr : MonoBehaviour
     {
         playerAudio.PlayOneShot(charactSelectAudio, gameFlow.GetComponent<GameFlow>().effectSoundSize);
     }
-    //뒤집기
+
+    //뒤집기(업그레이드)
+    public void UpgradeMapUnit(GameObject origin)
+    {
+        GameObject fU = Instantiate(friendlyBass);
+        Dictionary<string, object> Dict = libmgr.unitCode[origin.GetComponent<Units>().upgradeCode];
+        fU.name = Dict["Name"].ToString();
+
+        Units fUFun = fU.GetComponent<Units>();
+        fUFun.myCodeNum = origin.GetComponent<Units>().upgradeCode;
+        fUFun.upgradeRank = origin.GetComponent<Units>().upgradeRank;
+        fUFun.moveCountUpgrade = Convert.ToSingle(Dict["이동횟수 강화"]);
+        fUFun.minNumUpgrade = Convert.ToSingle(Dict["숫자 최소치 강화"]);
+        fUFun.maxNumUpgrade = Convert.ToSingle(Dict["숫자최대치 강화"]);
+        fUFun.moveMaxCount = (int)Dict["이동 횟수"] + (int)fUFun.moveCountUpgrade * fUFun.upgradeRank;
+        fUFun.minNum = (int)Dict["숫자 최소치"] + (int)fUFun.minNumUpgrade * fUFun.upgradeRank;
+        fUFun.maxNum = (int)Dict["숫자 최대치"] + (int)fUFun.maxNumUpgrade * fUFun.upgradeRank;
+        fUFun.unit2DImage = Resources.Load<Sprite>("Image2D/" + fUFun.myCodeNum);
+
+        Dictionary<string, object> DictEffect = libmgr.unitCodeEffects[origin.GetComponent<Units>().upgradeCode];
+        if (Convert.ToString(DictEffect["대각선만 이동"]) == "TRUE") { fUFun.bishop = true; fUFun.rook = false; }
+        if (Convert.ToString(DictEffect["전방위 이동"]) == "TRUE") { fUFun.bishop = true; fUFun.rook = true; }
+
+        if (fUFun.rook && !fUFun.bishop)
+            fUFun.unitEffectTxt = "룩";
+        else if (!fUFun.rook && fUFun.bishop)
+            fUFun.unitEffectTxt = "비숍";
+        else if (fUFun.rook && fUFun.bishop)
+            fUFun.unitEffectTxt = "퀸";
+
+        if (Convert.ToString(DictEffect["뒤로 이동 불가"]) == "TRUE")
+        {
+            fUFun.unitEffectTxt += ", 폰";
+            fUFun.pawn = true;
+        }
+        if (Convert.ToString(DictEffect["홀수 차례만 효과"]) == "TRUE")
+        {
+            fUFun.unitEffectTxt += ", 홀수 차례";
+            fUFun.oddTurnEffect = true;
+        }
+        if (Convert.ToString(DictEffect["짝수 차례만 효과"]) == "TRUE")
+        {
+            fUFun.unitEffectTxt += ", 짝수 차례";
+            fUFun.evenTurnEffect = true;
+        }
+        if (Convert.ToString(DictEffect["좌우 워프"]) == "TRUE")
+        {
+            fUFun.unitEffectTxt += ", 워프";
+            fUFun.warp = true;
+        }
+        if (Convert.ToString(DictEffect["전방향 전투"]) == "TRUE")
+        {
+            fUFun.unitEffectTxt += ", 전방향 전투";
+            fUFun.attackEvery = true;
+        }
+        if (Convert.ToString(DictEffect["위치 교체"]) == "TRUE")
+        {
+            fUFun.unitEffectTxt += ", 교대";
+            fUFun.changePos = true;
+        }
+        if (Convert.ToString(DictEffect["공격시 상대 숫자 변동"]) != "")
+        {
+            fUFun.attackMinusPow = Convert.ToInt32(DictEffect["공격시 상대 숫자 변동"]);
+            fUFun.unitEffectTxt += ", 저주" + " - " + fUFun.attackMinusPow;
+        }
+        if (Convert.ToString(DictEffect["자신 숫자 변동"]) != "")
+        {
+            fUFun.morePower = Convert.ToInt32(DictEffect["자신 숫자 변동"]);
+            fUFun.unitEffectTxt += ", 축복" + " + " + fUFun.morePower;
+        }
+        if (Convert.ToString(DictEffect["죽으면 패배"]) == "TRUE")
+        {
+            fUFun.unitEffectTxt += ", 심장";
+            fUFun.playerHeart = true;
+        }
+        if (Convert.ToString(DictEffect["위치 고정"]) == "TRUE")
+        {
+            fUFun.unitEffectTxt += ", 이동 불가";
+            fUFun.cantMove = true;
+        }
+        if (Convert.ToString(DictEffect["상대 진영 끝에 도달하면 강화(뒤집기)"]) != "")
+        {
+            fUFun.unitEffectTxt += ", 업그레이드";
+            fUFun.upgradeCode = DictEffect["상대 진영 끝에 도달하면 강화(뒤집기)"];
+        }
+        if (Convert.ToString(DictEffect["자신 진영에서만 이동 가능"]) == "TRUE")
+        {
+            fUFun.unitEffectTxt += ", 士";
+            fUFun.onlyMyPlace = true;
+        }
+        if (Convert.ToString(DictEffect["중립진영에 배치"]) == "TRUE")
+        {
+            fUFun.unitEffectTxt += ", 정찰병";
+            fUFun.placeAnywhere = true;
+        }
+        if (Convert.ToString(DictEffect["못 움직임 사망시"]) == "TRUE")
+        {
+            fUFun.unitEffectTxt += ", 독";
+            fUFun.poision = true;
+        }
+        if (Convert.ToString(DictEffect["숫자 범위 변하지 않음"]) == "TRUE")
+        {
+            fUFun.unitEffectTxt += ", 숫자 변동 없음";
+            fUFun.cristalBody = true;
+        }
+        if (Convert.ToString(DictEffect["차례 종료시 랜덤 이동"]) == "TRUE")
+        {
+            fUFun.unitEffectTxt += ", 랜덤 이동";
+            fUFun.randomMove = true;
+        }
+        if (Convert.ToString(DictEffect["다른 아군 숫자 변동"]) != "")
+        {
+            fUFun.powerUpTotem = Convert.ToInt32(DictEffect["다른 아군 숫자 변동"]);
+            fUFun.unitEffectTxt += ", 아군 축복" + " + " + fUFun.powerUpTotem;
+        }
+        if (Convert.ToString(DictEffect["못 움직임 이동 대신"]) == "TRUE")
+        {
+            fUFun.unitEffectTxt += ", 빙결";
+            fUFun.frozen = true;
+        }
+
+        fUFun.wakeUpUnit();
+        fU.transform.position = origin.transform.position;
+        //파워 토템
+        if (fUFun.powerUpTotem != 0)
+        {
+            for (int i = 0; i < playerUnits.Count; i++)
+            {
+                playerUnits[i].GetComponent<Units>().minNum += fUFun.powerUpTotem - origin.GetComponent<Units>().powerUpTotem;
+                playerUnits[i].GetComponent<Units>().maxNum += fUFun.powerUpTotem - origin.GetComponent<Units>().powerUpTotem;
+            }
+        }
+        for (int i = 0; i < playerUnits.Count; i++)
+        {
+            if (playerUnits[i] != fU && playerUnits[i].GetComponent<Units>().powerUpTotem != 0)
+            {
+                fUFun.minNum += playerUnits[i].GetComponent<Units>().powerUpTotem;
+                fUFun.maxNum += playerUnits[i].GetComponent<Units>().powerUpTotem;
+            }
+        }
+        Destroy(origin);
+    }
+
+    public void UnitRandomMoveP()
+    {
+        for (int i = 0; i < playerUnits.Count; i++)
+        {
+            if (playerUnits[i].GetComponent<Units>().randomMove)
+            {
+                //퀸
+                if (playerUnits[i].GetComponent<Units>().bishop && playerUnits[i].GetComponent<Units>().rook)
+                {
+                    if (playerUnits[i].GetComponent<Units>().pawn)
+                    { }
+                    else 
+                    { }
+                }
+                //비숍
+                else if (playerUnits[i].GetComponent<Units>().bishop && !playerUnits[i].GetComponent<Units>().rook)
+                { 
+                }
+                //룩
+                else if (!playerUnits[i].GetComponent<Units>().bishop && playerUnits[i].GetComponent<Units>().rook)
+                { 
+                }
+            }
+        }
+    }
 }

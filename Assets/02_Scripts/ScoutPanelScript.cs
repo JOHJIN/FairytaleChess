@@ -8,6 +8,7 @@ public class ScoutPanelScript : MonoBehaviour
 {
     public LibMgr libmgr;
     public ShopMgr shopmgr;
+    public UpgradePanelScript upgradescript;
 
     public List<object> rareNum5 = new List<object>();
     public List<object> rareNum4 = new List<object>();
@@ -75,6 +76,7 @@ public class ScoutPanelScript : MonoBehaviour
                 libmgr.playerUnitsData.Add(new List<object> { imge1.GetComponent<Units2DData>().my2DCodeNum, imge1.GetComponent<Units2DData>().upgradeRank });
                 Destroy(t.GetComponent<Button>());
                 Destroy(imge1);
+                upgradescript.settingMyUnits();
             }
             else { Debug.Log("no money!"); }
         }
@@ -88,6 +90,7 @@ public class ScoutPanelScript : MonoBehaviour
                 libmgr.playerUnitsData.Add(new List<object> { imge2.GetComponent<Units2DData>().my2DCodeNum, imge2.GetComponent<Units2DData>().upgradeRank });
                 Destroy(t.GetComponent<Button>());
                 Destroy(imge2);
+                upgradescript.settingMyUnits();
             }
             else { Debug.Log("no money!"); }
         }
@@ -101,7 +104,8 @@ public class ScoutPanelScript : MonoBehaviour
                 libmgr.playerUnitsData.Add(new List<object> { imge3.GetComponent<Units2DData>().my2DCodeNum, imge3.GetComponent<Units2DData>().upgradeRank });
                 Destroy(t.GetComponent<Button>());
                 Destroy(imge3);
-            }
+                upgradescript.settingMyUnits();
+           }
            else { Debug.Log("no money!"); }
         }
     }
@@ -178,13 +182,13 @@ public class ScoutPanelScript : MonoBehaviour
         }
         if (Convert.ToString(DictEffect["공격시 상대 숫자 변동"]) != "")
         {
-            fUFun.itsEffect += ", 저주";
             fUFun.attackMinusPow = Convert.ToInt32(DictEffect["공격시 상대 숫자 변동"]);
+            fUFun.itsEffect += ", 저주" + " - " + fUFun.attackMinusPow;
         }
         if (Convert.ToString(DictEffect["자신 숫자 변동"]) != "")
         {
-            fUFun.itsEffect += ", 축복";
             fUFun.morePower = Convert.ToInt32(DictEffect["자신 숫자 변동"]);
+            fUFun.itsEffect += ", 축복" + " + " + fUFun.morePower;
         }
         if (Convert.ToString(DictEffect["죽으면 패배"]) == "TRUE")
         {
@@ -228,8 +232,8 @@ public class ScoutPanelScript : MonoBehaviour
         }
         if (Convert.ToString(DictEffect["다른 아군 숫자 변동"]) != "")
         {
-            fUFun.itsEffect += ", 아군 축복";
             fUFun.powerUpTotem = Convert.ToInt32(DictEffect["다른 아군 숫자 변동"]);
+            fUFun.itsEffect += ", 아군 축복" + " + " + fUFun.powerUpTotem;
         }
         if (Convert.ToString(DictEffect["못 움직임 이동 대신"]) == "TRUE")
         {

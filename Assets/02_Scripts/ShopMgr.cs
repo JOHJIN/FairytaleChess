@@ -33,6 +33,7 @@ public class ShopMgr : MonoBehaviour
     public Slider effectSoundBar;
 
     public GameObject gameFlow;
+    public UpgradePanelScript upgradeScript;
     // Start is called before the first frame update
     void Start()
     {
@@ -83,7 +84,7 @@ public class ShopMgr : MonoBehaviour
 
         EE.unitEffectTxt.GetComponent<Text>().text = DD.unitEffectTxt.GetComponent<Text>().text;
         EE.unit2DImage.sprite = DD.unit2DImage.sprite;
-        EE.unitNameTxt.GetComponent<Text>().text = Dict["Name"] + " + " + DD.upgradeRank+1;
+        EE.unitNameTxt.GetComponent<Text>().text = Dict["Name"] + " + " + (DD.upgradeRank+1);
         EE.upgradeRank = DD.upgradeRank+1;
         EE.unitMoveTxt.GetComponent<Text>().text = "Move : " + EE.moveMaxCount.ToString();
         EE.unitNumTxt.GetComponent<Text>().text = EE.minNum + " ~ " + EE.maxNum;
@@ -114,7 +115,8 @@ public class ShopMgr : MonoBehaviour
                 selectMyUnit2D = null;
                 Destroy(gggg);
                 Destroy(gggg2);
-                buyUpgradeUnitTxt.text = "? G";
+                buyUpgradeUnitTxt.text = "Sucess to Upgrade";
+                upgradeScript.settingMyUnits();
             }
         }
     }

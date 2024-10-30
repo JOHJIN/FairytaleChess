@@ -12,7 +12,6 @@ public class UpgradePanelScript : MonoBehaviour
     public GameObject myUnit2DBass;
     public GameObject scrollviewContent;
     public ShopMgr shopmgr;
-
     // Start is called before the first frame update
     void Start()
     {
@@ -32,6 +31,9 @@ public class UpgradePanelScript : MonoBehaviour
 
     public void settingMyUnits()
     {
+        shopmgr.shopPlayerUnits.ForEach(unit => Destroy(unit));
+        shopmgr.shopPlayerUnits.Clear();
+
         for (int i = 1; i < libmgr.playerUnitsData.Count; i++)
         {
             GameObject My2Dunit = Instantiate(myUnit2DBass, scrollviewContent.transform);
@@ -91,13 +93,13 @@ public class UpgradePanelScript : MonoBehaviour
             }
             if (Convert.ToString(DictEffect["공격시 상대 숫자 변동"]) != "")
             {
-                fUFun.itsEffect += ", 저주";
                 fUFun.attackMinusPow = Convert.ToInt32(DictEffect["공격시 상대 숫자 변동"]);
+                fUFun.itsEffect += ", 저주" + " - " + fUFun.attackMinusPow;
             }
             if (Convert.ToString(DictEffect["자신 숫자 변동"]) != "")
             {
-                fUFun.itsEffect += ", 축복";
                 fUFun.morePower = Convert.ToInt32(DictEffect["자신 숫자 변동"]);
+                fUFun.itsEffect += ", 축복" + " + " + fUFun.morePower;
             }
             if (Convert.ToString(DictEffect["죽으면 패배"]) == "TRUE")
             {
@@ -141,8 +143,8 @@ public class UpgradePanelScript : MonoBehaviour
             }
             if (Convert.ToString(DictEffect["다른 아군 숫자 변동"]) != "")
             {
-                fUFun.itsEffect += ", 아군 축복";
                 fUFun.powerUpTotem = Convert.ToInt32(DictEffect["다른 아군 숫자 변동"]);
+                fUFun.itsEffect += ", 아군 축복" + " + " + fUFun.powerUpTotem;
             }
             if (Convert.ToString(DictEffect["못 움직임 이동 대신"]) == "TRUE")
             {
@@ -156,6 +158,7 @@ public class UpgradePanelScript : MonoBehaviour
             fUFun.unitNumTxt.GetComponent<Text>().text = fUFun.minNum + " ~ " + fUFun.maxNum;
 
             My2Dunit.GetComponent<Button>().onClick.AddListener(() => imTarget(My2Dunit));
+            My2Dunit.GetComponent<Button>().onClick.AddListener(() => shopmgr.cSelectAudio());
             shopmgr.shopPlayerUnits.Add(My2Dunit);
         }
         GameObject p1 = Instantiate(myUnit2DBass, scrollviewContent.transform);
@@ -169,6 +172,7 @@ public class UpgradePanelScript : MonoBehaviour
         p1.GetComponent<Units2DData>().unitNameTxt.GetComponent<Text>().text = playerDict["Name"].ToString() + " + " + p1.GetComponent<Units2DData>().upgradeRank;
         p1.GetComponent<Units2DData>().unitNumTxt.GetComponent<Text>().text = p1.GetComponent<Units2DData>().minNum + " ~ " + p1.GetComponent<Units2DData>().maxNum;
         p1.GetComponent<Button>().onClick.AddListener(() => imTarget(p1));
+        p1.GetComponent<Button>().onClick.AddListener(() => shopmgr.cSelectAudio());
         shopmgr.shopPlayerUnits.Add(p1);
     }
 }
