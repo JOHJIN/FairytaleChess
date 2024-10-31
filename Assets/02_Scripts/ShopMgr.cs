@@ -26,6 +26,7 @@ public class ShopMgr : MonoBehaviour
     public AudioClip clickAudioClip;
     public AudioClip charactSelectAudio;
     public AudioClip backgroundAudio;
+    public AudioSource backAudioSource;
 
     public GameObject soundPanel;
     public Slider mainSoundBar;
@@ -42,13 +43,21 @@ public class ShopMgr : MonoBehaviour
         mainSoundBar.value = gameFlow.GetComponent<GameFlow>().mainSoundSize;
         backGroundSoundBar.value = gameFlow.GetComponent<GameFlow>().bgmSoundSize;
         effectSoundBar.value = gameFlow.GetComponent<GameFlow>().effectSoundSize;
-        playerAudio.PlayOneShot(backgroundAudio, gameFlow.GetComponent<GameFlow>().bgmSoundSize);
+        backAudioSource.PlayOneShot(backgroundAudio, gameFlow.GetComponent<GameFlow>().bgmSoundSize);
     }
 
     // Update is called once per frame
     void Update()
     {
         haveMoneyTxt.text = libmgr.money + " G";
+        playerAudio.volume = gameFlow.GetComponent<GameFlow>().mainSoundSize;
+        backAudioSource.volume = gameFlow.GetComponent<GameFlow>().bgmSoundSize * gameFlow.GetComponent<GameFlow>().mainSoundSize;
+        if (soundPanel)
+        {
+            gameFlow.GetComponent<GameFlow>().mainSoundSize = mainSoundBar.value;
+            gameFlow.GetComponent<GameFlow>().bgmSoundSize = backGroundSoundBar.value;
+            gameFlow.GetComponent<GameFlow>().effectSoundSize = effectSoundBar.value;
+        }
     }
 
     public void NextStageBtn()

@@ -81,6 +81,7 @@ public class GameMgr : MonoBehaviour
     public AudioClip backgroundAudio1;
     public AudioClip backgroundAudio2;
     public AudioClip backgroundAudio3;
+    public AudioSource backAudioSource;
 
     public GameObject soundPanel;
     public Slider mainSoundBar;
@@ -92,6 +93,8 @@ public class GameMgr : MonoBehaviour
     float sensitivity = 250f;
     float roY = 0;
     float roX = 0;
+
+    public bool turnOverBool = true;
     void Start()
     {
         gameFlow = GameObject.Find("GameFlow");
@@ -100,11 +103,11 @@ public class GameMgr : MonoBehaviour
         effectSoundBar.value = gameFlow.GetComponent<GameFlow>().effectSoundSize;
         StartCoroutine(gmrStartCorou());
         if (libmgr.stageLevelCount < 2)
-            playerAudio.PlayOneShot(backgroundAudio1, gameFlow.GetComponent<GameFlow>().bgmSoundSize);
+            backAudioSource.PlayOneShot(backgroundAudio1, gameFlow.GetComponent<GameFlow>().bgmSoundSize);
         else if (libmgr.stageLevelCount > 3)
-            playerAudio.PlayOneShot(backgroundAudio3, gameFlow.GetComponent<GameFlow>().bgmSoundSize);
+            backAudioSource.PlayOneShot(backgroundAudio3, gameFlow.GetComponent<GameFlow>().bgmSoundSize);
         else
-            playerAudio.PlayOneShot(backgroundAudio2, gameFlow.GetComponent<GameFlow>().bgmSoundSize);
+            backAudioSource.PlayOneShot(backgroundAudio2, gameFlow.GetComponent<GameFlow>().bgmSoundSize);
         bosstype = UnityEngine.Random.Range(-1, 2);
     }
 
@@ -151,7 +154,7 @@ public class GameMgr : MonoBehaviour
                         if (placementTime)
                         {
                             if (selectUnit.GetComponent<Units>().placeAnywhere
-                                && hit.collider.transform.position.z <= mapMaxZ - friendlyZone)
+                                && hit.collider.transform.position.z <= mapMaxZ - friendlyZone -1)
                             {
                                 selectUnit.transform.position =
                                 new Vector3(hit.collider.transform.position.x,
@@ -245,7 +248,10 @@ public class GameMgr : MonoBehaviour
                             }
                         }
                         else
-                        {}
+                        {
+                            selectOn = false;
+                            selectUnit = null;
+                        }
                     }                  
                     else
                     {
@@ -583,6 +589,16 @@ public class GameMgr : MonoBehaviour
         {
             PlayerTurnOverBtn();
         }
+
+        //사운드
+        playerAudio.volume = gameFlow.GetComponent<GameFlow>().mainSoundSize;
+        backAudioSource.volume = gameFlow.GetComponent<GameFlow>().bgmSoundSize * gameFlow.GetComponent<GameFlow>().mainSoundSize;
+        if (soundPanel)
+        {
+            gameFlow.GetComponent<GameFlow>().mainSoundSize = mainSoundBar.value;
+            gameFlow.GetComponent<GameFlow>().bgmSoundSize = backGroundSoundBar.value;
+            gameFlow.GetComponent<GameFlow>().effectSoundSize = effectSoundBar.value;
+        }
     }
 
     public void unitMove(int unitMoveX, int unitMoveZ)
@@ -599,36 +615,45 @@ public class GameMgr : MonoBehaviour
         {
             if (playerUnits[0].transform.position.y < 1)
             {
+                selectUnit = null;
+                turnOverBool = false;
                 StartCoroutine(placementOverCorou());
                 StartCoroutine(startAndDestroy());
+                StartCoroutine(waitTurn());
             }
         }
 
-        // 턴 종료시 버튼 클릭
-        if(playerTurn && !placementTime)
+        if (turnOverBool)
         {
-            gmrUi.whosTurnTxtChange();
-            turnTime = 0;
-            playerTurn = false;
-            turnMove = 0;
-            selectOn = false;
-            gmrUi.moveCountTxtChange(turnMaxMove - turnMove);
-            for (int i = 0; i < enermyUnits.Count; i++)
+            // 턴 종료시 버튼 클릭
+            if (playerTurn && !placementTime)
             {
-                if (enermyUnits[i].GetComponent<Units>().nextMoveFalse)
+                turnOverBool = false;
+                gmrUi.whosTurnTxtChange();
+                turnTime = 0;
+                playerTurn = false;
+                turnMove = 0;
+                selectOn = false;
+                selectUnit = null;
+                gmrUi.moveCountTxtChange(turnMaxMove - turnMove);
+                for (int i = 0; i < enermyUnits.Count; i++)
                 {
-                    enermyUnits[i].GetComponent<Units>().nextMoveFalse = false;
+                    if (enermyUnits[i].GetComponent<Units>().nextMoveFalse)
+                    {
+                        enermyUnits[i].GetComponent<Units>().nextMoveFalse = false;
+                    }
+                    else
+                    {
+                        enermyUnits[i].GetComponent<Units>().moveAble = true;
+                        enermyUnits[i].GetComponent<Units>().moveCount = 0;
+                    }
                 }
-                else 
-                {
-                    enermyUnits[i].GetComponent<Units>().moveAble = true;
-                    enermyUnits[i].GetComponent<Units>().moveCount = 0;
-                }
+                AiTurn = true;
+                canMove = true;
+                move1EnermyAi = null;
+                aiSelect = false;
+                StartCoroutine(waitTurn());
             }
-            AiTurn = true;
-            canMove = true;
-            move1EnermyAi = null;
-            aiSelect = false;
         }
     }
     
@@ -795,7 +820,7 @@ public class GameMgr : MonoBehaviour
             {
                 for (int j = 0; j < playerUnits.Count; j++)
                 {
-                    if (i != j)
+                    if (i != j && !playerUnits[j].GetComponent<Units>().cristalBody)
                     {
                         playerUnits[j].GetComponent<Units>().minNum += playerUnits[i].GetComponent<Units>().powerUpTotem;
                         playerUnits[j].GetComponent<Units>().maxNum += playerUnits[i].GetComponent<Units>().powerUpTotem;
@@ -809,7 +834,7 @@ public class GameMgr : MonoBehaviour
             {
                 for (int j = 0; j < enermyUnits.Count; j++)
                 {
-                    if (i != j)
+                    if (i != j && !enermyUnits[j].GetComponent<Units>().cristalBody)
                     {
                         enermyUnits[j].GetComponent<Units>().minNum += enermyUnits[i].GetComponent<Units>().powerUpTotem;
                         enermyUnits[j].GetComponent<Units>().maxNum += enermyUnits[i].GetComponent<Units>().powerUpTotem;
@@ -1285,7 +1310,7 @@ public class GameMgr : MonoBehaviour
             if (enermyUnits[enermyPlaceCount].GetComponent<Units>().placeAnywhere)
             {
                 int rnd = UnityEngine.Random.Range(1, mapMaxX + 1);
-                int rnd2 = UnityEngine.Random.Range(friendlyZone + 1, mapMaxZ + 1);
+                int rnd2 = UnityEngine.Random.Range(friendlyZone + 2, mapMaxZ + 1);
 
                 Vector3 upUnitPlace = new Vector3(rnd, 3, rnd2);
                 if (Physics.Raycast(upUnitPlace, Vector3.down, out RaycastHit hit, 15f))
@@ -1341,6 +1366,7 @@ public class GameMgr : MonoBehaviour
     //전투
     public IEnumerator fighting(GameObject a, GameObject b)
     {
+        selectUnit = null;
         if (a == playerUnits[0] || b == enermyUnits[0])
         {
             if (a == playerUnits[0])
@@ -1414,7 +1440,7 @@ public class GameMgr : MonoBehaviour
                 {
                     for (int i = 0; i < enermyUnits.Count; i++)
                     {
-                        if (enermyUnits[i] != b)
+                        if (enermyUnits[i] != b && !enermyUnits[i].GetComponent<Units>().cristalBody)
                         {
                             enermyUnits[i].GetComponent<Units>().minNum -= b.GetComponent<Units>().powerUpTotem;
                             enermyUnits[i].GetComponent<Units>().maxNum -= b.GetComponent<Units>().powerUpTotem;
@@ -1456,7 +1482,7 @@ public class GameMgr : MonoBehaviour
                 {
                     for (int i = 0; i < playerUnits.Count; i++)
                     {
-                        if (playerUnits[i] != a)
+                        if (playerUnits[i] != a && !playerUnits[i].GetComponent<Units>().cristalBody)
                         {
                             playerUnits[i].GetComponent<Units>().minNum -= a.GetComponent<Units>().powerUpTotem;
                             playerUnits[i].GetComponent<Units>().maxNum -= a.GetComponent<Units>().powerUpTotem;
@@ -1507,7 +1533,7 @@ public class GameMgr : MonoBehaviour
                 {
                     for (int i = 0; i < playerUnits.Count; i++)
                     {
-                        if (playerUnits[i] != a)
+                        if (playerUnits[i] != a && !playerUnits[i].GetComponent<Units>().cristalBody)
                         {
                             playerUnits[i].GetComponent<Units>().minNum -= a.GetComponent<Units>().powerUpTotem;
                             playerUnits[i].GetComponent<Units>().maxNum -= a.GetComponent<Units>().powerUpTotem;
@@ -1520,7 +1546,7 @@ public class GameMgr : MonoBehaviour
                 { 
                     for (int i = 0; i < enermyUnits.Count; i++)
                     {
-                        if (enermyUnits[i] != b)
+                        if (enermyUnits[i] != b && !enermyUnits[i].GetComponent<Units>().cristalBody)
                         {
                             enermyUnits[i].GetComponent<Units>().minNum -= b.GetComponent<Units>().powerUpTotem;
                             enermyUnits[i].GetComponent<Units>().maxNum -= b.GetComponent<Units>().powerUpTotem;
@@ -1621,11 +1647,7 @@ public class GameMgr : MonoBehaviour
                     }
                     else if (AiDistX > 0.1 && AiDistZ < -0.1)
                     {
-                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
-                        {
-                            move1EnermyAi.GetComponent<Units>().moveAble = false;
-                        }
-                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                         move1EnermyAi.GetComponent<Units>().moveAble = false;
                     }
                     else if (AiDistX < -0.1 && AiDistZ > 0.1)
                     {
@@ -1637,35 +1659,42 @@ public class GameMgr : MonoBehaviour
                     }
                     else if (AiDistX < -0.1 && AiDistZ < -0.1)
                     {
-                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
-                        {
-                            move1EnermyAi.GetComponent<Units>().moveAble = false;
-                        }
-                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                        move1EnermyAi.GetComponent<Units>().moveAble = false;
                     }
                     else if (Mathf.Abs(AiDistX) <= 0.1 && AiDistZ > 0.1)
                     {
-                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                        if (move1EnermyAi.transform.position.x > mapMaxX / 2)
                         {
-                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, -1), out RaycastHit hit, 1f))
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
                         }
-                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                        else
+                        {
+                            if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, -1), out RaycastHit hit, 1f))
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
+                        }
                     }
                     else if (AiDistX > 0.1 && Mathf.Abs(AiDistZ) <= 0.1)
                     {
-                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, -1), out RaycastHit hit, 1f))
                         {
                             move1EnermyAi.GetComponent<Units>().moveAble = false;
                         }
-                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
                     }
                     else if (AiDistX < -0.1 && Mathf.Abs(AiDistZ) <= 0.1)
                     {
-                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, -1), out RaycastHit hit, 1f))
                         {
                             move1EnermyAi.GetComponent<Units>().moveAble = false;
                         }
-                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
                     }
                     else move1EnermyAi.GetComponent<Units>().moveAble = false;
                 }
@@ -1674,11 +1703,33 @@ public class GameMgr : MonoBehaviour
                 {
                     if (AiDistZ > 0.1)
                     {
-                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                        if (AiDistZ > AiDistX)
                         {
-                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
                         }
-                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                        else
+                        {
+                            if (AiDistX > 0.1)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                            }
+                            else 
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                            }
+                        }
                     }
                     else if (AiDistX > 0.1 && AiDistZ < 0.1)
                     {
@@ -1696,14 +1747,6 @@ public class GameMgr : MonoBehaviour
                         }
                         else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
                     }
-                    else if (AiDistX > 0.1 && AiDistZ > -0.1)
-                    {
-                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
-                        {
-                            move1EnermyAi.GetComponent<Units>().moveAble = false;
-                        }
-                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
-                    }
                     else move1EnermyAi.GetComponent<Units>().moveAble = false;
                 }
             }
@@ -1716,33 +1759,93 @@ public class GameMgr : MonoBehaviour
                     {
                         if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, -1), out RaycastHit hit, 1f))
                         {
-                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            if (AiDistX < AiDistZ)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit2, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                            }
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit2, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                            }
                         }
                         else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
                     }
                     else if (AiDistX > 0.1 && AiDistZ < -0.1)
                     {
-                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 1), out RaycastHit hit, 1f))
                         {
-                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            if (AiDistX < Mathf.Abs(AiDistZ))
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, 1), out RaycastHit hit2, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, 1));
+                            }
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit2, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                            }
                         }
-                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 1));
                     }
                     else if (AiDistX < -0.1 && AiDistZ > 0.1)
                     {
                         if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, -1), out RaycastHit hit, 1f))
                         {
-                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            if (Mathf.Abs(AiDistX) > Mathf.Abs(AiDistZ))
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit2, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                            }
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit2, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                            }
                         }
                         else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
                     }
                     else if (AiDistX < -0.1 && AiDistZ < -0.1)
                     {
-                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 1), out RaycastHit hit, 1f))
                         {
-                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            if (Mathf.Abs(AiDistX) < Mathf.Abs(AiDistZ))
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, 1), out RaycastHit hit2, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, 1));
+                            }
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit2, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                            }
                         }
-                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 1));
                     }
                     else if (Mathf.Abs(AiDistX) <= 0.1 && AiDistZ > 0.1)
                     {
@@ -1751,6 +1854,14 @@ public class GameMgr : MonoBehaviour
                             move1EnermyAi.GetComponent<Units>().moveAble = false;
                         }
                         else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                    }
+                    else if (Mathf.Abs(AiDistX) <= 0.1 && AiDistZ < -0.1)
+                    {
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, 1), out RaycastHit hit, 1f))
+                        {
+                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                        }
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, 1));
                     }
                     else if (AiDistX > 0.1 && Mathf.Abs(AiDistZ) <= 0.1)
                     {
@@ -1783,11 +1894,11 @@ public class GameMgr : MonoBehaviour
                     }
                     else if (AiDistX > 0.1 && AiDistZ < -0.1)
                     {
-                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 1), out RaycastHit hit, 1f))
                         {
                             move1EnermyAi.GetComponent<Units>().moveAble = false;
                         }
-                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 1));
                     }
                     else if (AiDistX < -0.1 && AiDistZ > 0.1)
                     {
@@ -1799,50 +1910,154 @@ public class GameMgr : MonoBehaviour
                     }
                     else if (AiDistX < -0.1 && AiDistZ < -0.1)
                     {
-                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 1), out RaycastHit hit, 1f))
                         {
                             move1EnermyAi.GetComponent<Units>().moveAble = false;
                         }
-                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 1));
                     }
                     else if (Mathf.Abs(AiDistX) <= 0.1 && AiDistZ > 0.1)
                     {
-                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                        if (move1EnermyAi.transform.position.x > mapMaxX / 2)
                         {
-                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, -1), out RaycastHit hit, 1f))
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
                         }
-                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                        else
+                        {
+                            if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, -1), out RaycastHit hit, 1f))
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
+                        }
+                    }
+                    else if (Mathf.Abs(AiDistX) <= 0.1 && AiDistZ < -0.1)
+                    {
+                        if (move1EnermyAi.transform.position.x > mapMaxX / 2)
+                        {
+                            if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 1), out RaycastHit hit, 1f))
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 1));
+                        }
+                        else
+                        {
+                            if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 1), out RaycastHit hit, 1f))
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 1));
+                        }
                     }
                     else if (AiDistX > 0.1 && Mathf.Abs(AiDistZ) <= 0.1)
                     {
-                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                        if (move1EnermyAi.transform.position.z > mapMaxZ / 2)
                         {
-                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, -1), out RaycastHit hit, 1f))
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, -1));
                         }
-                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                        else
+                        {
+                            if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 1), out RaycastHit hit, 1f))
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 1));
+                        }
                     }
                     else if (AiDistX < -0.1 && Mathf.Abs(AiDistZ) <= 0.1)
                     {
-                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                        if (move1EnermyAi.transform.position.z > mapMaxZ / 2)
                         {
-                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, -1), out RaycastHit hit, 1f))
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, -1));
                         }
-                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                        else
+                        {
+                            if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 1), out RaycastHit hit, 1f))
+                            {
+                                move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            }
+                            else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 1));
+                        }
                     }
                     else move1EnermyAi.GetComponent<Units>().moveAble = false;
                 }
                 //룩
                 else if (move1EnermyAi.GetComponent<Units>().rook && !move1EnermyAi.GetComponent<Units>().bishop)
                 {
-                    if (AiDistZ > 0.1)
+                    if (Mathf.Abs(AiDistZ) > 0.1)
                     {
-                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                        if (Mathf.Abs(AiDistZ) > Mathf.Abs(AiDistX))
                         {
-                            move1EnermyAi.GetComponent<Units>().moveAble = false;
+                            if (AiDistZ > 0.1)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, -1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                            }
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, 1), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, 1));
+                            }
                         }
-                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, -1));
+                        else if (Mathf.Abs(AiDistZ) < Math.Abs(AiDistX))
+                        {
+                            if (AiDistX > 0.1)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                            }
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                            }
+                        }
+                        else 
+                        {
+                            if (AiDistX > 0.1)
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
+                            }
+                            else
+                            {
+                                if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
+                                {
+                                    move1EnermyAi.GetComponent<Units>().moveAble = false;
+                                }
+                                else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
+                            }
+                        }
                     }
-                    else if (AiDistX > 0.1 && AiDistZ < 0.1)
+                    else if (AiDistX > 0.1)
                     {
                         if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
                         {
@@ -1850,15 +2065,7 @@ public class GameMgr : MonoBehaviour
                         }
                         else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
                     }
-                    else if (AiDistX < 0.1 && AiDistX > -0.1 && AiDistZ < 0.1)
-                    {
-                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(0, 0, 1), out RaycastHit hit, 1f))
-                        {
-                            move1EnermyAi.GetComponent<Units>().moveAble = false;
-                        }
-                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(0, 0, 1));
-                    }
-                    else if (AiDistX < -0.1 && AiDistZ < 0.1)
+                    else
                     {
                         if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(1, 0, 0), out RaycastHit hit, 1f))
                         {
@@ -1866,21 +2073,13 @@ public class GameMgr : MonoBehaviour
                         }
                         else move1EnermyAi.GetComponent<Units>().Move(new Vector3(1, 0, 0));
                     }
-                    else if (AiDistX > 0.1 && AiDistZ > -0.1)
-                    {
-                        if (Physics.Raycast(move1EnermyAi.transform.position, new Vector3(-1, 0, 0), out RaycastHit hit, 1f))
-                        {
-                            move1EnermyAi.GetComponent<Units>().moveAble = false;
-                        }
-                        else move1EnermyAi.GetComponent<Units>().Move(new Vector3(-1, 0, 0));
-                    }
-                    else move1EnermyAi.GetComponent<Units>().moveAble = false;
                 }
             }
         }
         //회피시 거리가 멀어서 자율 행동
         else if (move1EnermyAi.GetComponent<Units>().halfNum + bosstype < targetPlayerUnit1Ai.GetComponent<Units>().halfNum
-            && Mathf.Abs(move1EnermyAi.GetComponent<Units>().transform.position.z - targetPlayerUnit1Ai.GetComponent<Units>().transform.position.z) > 3 && move1EnermyAi != enermyUnits[0])
+            && Mathf.Abs(move1EnermyAi.GetComponent<Units>().transform.position.z - targetPlayerUnit1Ai.GetComponent<Units>().transform.position.z)
+            + Mathf.Abs(move1EnermyAi.GetComponent<Units>().transform.position.x - targetPlayerUnit1Ai.GetComponent<Units>().transform.position.x) > 3 && move1EnermyAi != enermyUnits[0])
         {
             if (move1EnermyAi.transform.position.x == 1)
             {
@@ -3568,143 +3767,292 @@ public class GameMgr : MonoBehaviour
     //뒤집기(업그레이드)
     public void UpgradeMapUnit(GameObject origin)
     {
-        GameObject fU = Instantiate(friendlyBass);
-        Dictionary<string, object> Dict = libmgr.unitCode[origin.GetComponent<Units>().upgradeCode];
-        fU.name = Dict["Name"].ToString();
+        if (playerUnits.Any(unit => unit == origin))
+        {
+            GameObject fU = Instantiate(friendlyBass);
+            Dictionary<string, object> Dict = libmgr.unitCode[origin.GetComponent<Units>().upgradeCode];
+            fU.name = Dict["Name"].ToString();
 
-        Units fUFun = fU.GetComponent<Units>();
-        fUFun.myCodeNum = origin.GetComponent<Units>().upgradeCode;
-        fUFun.upgradeRank = origin.GetComponent<Units>().upgradeRank;
-        fUFun.moveCountUpgrade = Convert.ToSingle(Dict["이동횟수 강화"]);
-        fUFun.minNumUpgrade = Convert.ToSingle(Dict["숫자 최소치 강화"]);
-        fUFun.maxNumUpgrade = Convert.ToSingle(Dict["숫자최대치 강화"]);
-        fUFun.moveMaxCount = (int)Dict["이동 횟수"] + (int)fUFun.moveCountUpgrade * fUFun.upgradeRank;
-        fUFun.minNum = (int)Dict["숫자 최소치"] + (int)fUFun.minNumUpgrade * fUFun.upgradeRank;
-        fUFun.maxNum = (int)Dict["숫자 최대치"] + (int)fUFun.maxNumUpgrade * fUFun.upgradeRank;
-        fUFun.unit2DImage = Resources.Load<Sprite>("Image2D/" + fUFun.myCodeNum);
+            Units fUFun = fU.GetComponent<Units>();
+            fUFun.myCodeNum = origin.GetComponent<Units>().upgradeCode;
+            fUFun.upgradeRank = origin.GetComponent<Units>().upgradeRank;
+            fUFun.moveCountUpgrade = Convert.ToSingle(Dict["이동횟수 강화"]);
+            fUFun.minNumUpgrade = Convert.ToSingle(Dict["숫자 최소치 강화"]);
+            fUFun.maxNumUpgrade = Convert.ToSingle(Dict["숫자최대치 강화"]);
+            fUFun.moveMaxCount = (int)Dict["이동 횟수"] + (int)fUFun.moveCountUpgrade * fUFun.upgradeRank;
+            fUFun.minNum = (int)Dict["숫자 최소치"] + (int)fUFun.minNumUpgrade * fUFun.upgradeRank;
+            fUFun.maxNum = (int)Dict["숫자 최대치"] + (int)fUFun.maxNumUpgrade * fUFun.upgradeRank;
+            fUFun.unit2DImage = Resources.Load<Sprite>("Image2D/" + fUFun.myCodeNum);
 
-        Dictionary<string, object> DictEffect = libmgr.unitCodeEffects[origin.GetComponent<Units>().upgradeCode];
-        if (Convert.ToString(DictEffect["대각선만 이동"]) == "TRUE") { fUFun.bishop = true; fUFun.rook = false; }
-        if (Convert.ToString(DictEffect["전방위 이동"]) == "TRUE") { fUFun.bishop = true; fUFun.rook = true; }
+            Dictionary<string, object> DictEffect = libmgr.unitCodeEffects[origin.GetComponent<Units>().upgradeCode];
+            if (Convert.ToString(DictEffect["대각선만 이동"]) == "TRUE") { fUFun.bishop = true; fUFun.rook = false; }
+            if (Convert.ToString(DictEffect["전방위 이동"]) == "TRUE") { fUFun.bishop = true; fUFun.rook = true; }
 
-        if (fUFun.rook && !fUFun.bishop)
-            fUFun.unitEffectTxt = "룩";
-        else if (!fUFun.rook && fUFun.bishop)
-            fUFun.unitEffectTxt = "비숍";
-        else if (fUFun.rook && fUFun.bishop)
-            fUFun.unitEffectTxt = "퀸";
+            if (fUFun.rook && !fUFun.bishop)
+                fUFun.unitEffectTxt = "룩";
+            else if (!fUFun.rook && fUFun.bishop)
+                fUFun.unitEffectTxt = "비숍";
+            else if (fUFun.rook && fUFun.bishop)
+                fUFun.unitEffectTxt = "퀸";
 
-        if (Convert.ToString(DictEffect["뒤로 이동 불가"]) == "TRUE")
-        {
-            fUFun.unitEffectTxt += ", 폰";
-            fUFun.pawn = true;
-        }
-        if (Convert.ToString(DictEffect["홀수 차례만 효과"]) == "TRUE")
-        {
-            fUFun.unitEffectTxt += ", 홀수 차례";
-            fUFun.oddTurnEffect = true;
-        }
-        if (Convert.ToString(DictEffect["짝수 차례만 효과"]) == "TRUE")
-        {
-            fUFun.unitEffectTxt += ", 짝수 차례";
-            fUFun.evenTurnEffect = true;
-        }
-        if (Convert.ToString(DictEffect["좌우 워프"]) == "TRUE")
-        {
-            fUFun.unitEffectTxt += ", 워프";
-            fUFun.warp = true;
-        }
-        if (Convert.ToString(DictEffect["전방향 전투"]) == "TRUE")
-        {
-            fUFun.unitEffectTxt += ", 전방향 전투";
-            fUFun.attackEvery = true;
-        }
-        if (Convert.ToString(DictEffect["위치 교체"]) == "TRUE")
-        {
-            fUFun.unitEffectTxt += ", 교대";
-            fUFun.changePos = true;
-        }
-        if (Convert.ToString(DictEffect["공격시 상대 숫자 변동"]) != "")
-        {
-            fUFun.attackMinusPow = Convert.ToInt32(DictEffect["공격시 상대 숫자 변동"]);
-            fUFun.unitEffectTxt += ", 저주" + " - " + fUFun.attackMinusPow;
-        }
-        if (Convert.ToString(DictEffect["자신 숫자 변동"]) != "")
-        {
-            fUFun.morePower = Convert.ToInt32(DictEffect["자신 숫자 변동"]);
-            fUFun.unitEffectTxt += ", 축복" + " + " + fUFun.morePower;
-        }
-        if (Convert.ToString(DictEffect["죽으면 패배"]) == "TRUE")
-        {
-            fUFun.unitEffectTxt += ", 심장";
-            fUFun.playerHeart = true;
-        }
-        if (Convert.ToString(DictEffect["위치 고정"]) == "TRUE")
-        {
-            fUFun.unitEffectTxt += ", 이동 불가";
-            fUFun.cantMove = true;
-        }
-        if (Convert.ToString(DictEffect["상대 진영 끝에 도달하면 강화(뒤집기)"]) != "")
-        {
-            fUFun.unitEffectTxt += ", 업그레이드";
-            fUFun.upgradeCode = DictEffect["상대 진영 끝에 도달하면 강화(뒤집기)"];
-        }
-        if (Convert.ToString(DictEffect["자신 진영에서만 이동 가능"]) == "TRUE")
-        {
-            fUFun.unitEffectTxt += ", 士";
-            fUFun.onlyMyPlace = true;
-        }
-        if (Convert.ToString(DictEffect["중립진영에 배치"]) == "TRUE")
-        {
-            fUFun.unitEffectTxt += ", 정찰병";
-            fUFun.placeAnywhere = true;
-        }
-        if (Convert.ToString(DictEffect["못 움직임 사망시"]) == "TRUE")
-        {
-            fUFun.unitEffectTxt += ", 독";
-            fUFun.poision = true;
-        }
-        if (Convert.ToString(DictEffect["숫자 범위 변하지 않음"]) == "TRUE")
-        {
-            fUFun.unitEffectTxt += ", 숫자 변동 없음";
-            fUFun.cristalBody = true;
-        }
-        if (Convert.ToString(DictEffect["차례 종료시 랜덤 이동"]) == "TRUE")
-        {
-            fUFun.unitEffectTxt += ", 랜덤 이동";
-            fUFun.randomMove = true;
-        }
-        if (Convert.ToString(DictEffect["다른 아군 숫자 변동"]) != "")
-        {
-            fUFun.powerUpTotem = Convert.ToInt32(DictEffect["다른 아군 숫자 변동"]);
-            fUFun.unitEffectTxt += ", 아군 축복" + " + " + fUFun.powerUpTotem;
-        }
-        if (Convert.ToString(DictEffect["못 움직임 이동 대신"]) == "TRUE")
-        {
-            fUFun.unitEffectTxt += ", 빙결";
-            fUFun.frozen = true;
-        }
+            if (Convert.ToString(DictEffect["뒤로 이동 불가"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 폰";
+                fUFun.pawn = true;
+            }
+            if (Convert.ToString(DictEffect["홀수 차례만 효과"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 홀수 차례";
+                fUFun.oddTurnEffect = true;
+            }
+            if (Convert.ToString(DictEffect["짝수 차례만 효과"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 짝수 차례";
+                fUFun.evenTurnEffect = true;
+            }
+            if (Convert.ToString(DictEffect["좌우 워프"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 워프";
+                fUFun.warp = true;
+            }
+            if (Convert.ToString(DictEffect["전방향 전투"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 전방향 전투";
+                fUFun.attackEvery = true;
+            }
+            if (Convert.ToString(DictEffect["위치 교체"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 교대";
+                fUFun.changePos = true;
+            }
+            if (Convert.ToString(DictEffect["공격시 상대 숫자 변동"]) != "")
+            {
+                fUFun.attackMinusPow = Convert.ToInt32(DictEffect["공격시 상대 숫자 변동"]);
+                fUFun.unitEffectTxt += ", 저주" + " - " + fUFun.attackMinusPow;
+            }
+            if (Convert.ToString(DictEffect["자신 숫자 변동"]) != "")
+            {
+                fUFun.morePower = Convert.ToInt32(DictEffect["자신 숫자 변동"]);
+                fUFun.unitEffectTxt += ", 축복" + " + " + fUFun.morePower;
+            }
+            if (Convert.ToString(DictEffect["죽으면 패배"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 심장";
+                fUFun.playerHeart = true;
+            }
+            if (Convert.ToString(DictEffect["위치 고정"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 이동 불가";
+                fUFun.cantMove = true;
+            }
+            if (Convert.ToString(DictEffect["상대 진영 끝에 도달하면 강화(뒤집기)"]) != "")
+            {
+                fUFun.unitEffectTxt += ", 업그레이드";
+                fUFun.upgradeCode = DictEffect["상대 진영 끝에 도달하면 강화(뒤집기)"];
+            }
+            if (Convert.ToString(DictEffect["자신 진영에서만 이동 가능"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 士";
+                fUFun.onlyMyPlace = true;
+            }
+            if (Convert.ToString(DictEffect["중립진영에 배치"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 정찰병";
+                fUFun.placeAnywhere = true;
+            }
+            if (Convert.ToString(DictEffect["못 움직임 사망시"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 독";
+                fUFun.poision = true;
+            }
+            if (Convert.ToString(DictEffect["숫자 범위 변하지 않음"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 숫자 변동 없음";
+                fUFun.cristalBody = true;
+            }
+            if (Convert.ToString(DictEffect["차례 종료시 랜덤 이동"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 랜덤 이동";
+                fUFun.randomMove = true;
+            }
+            if (Convert.ToString(DictEffect["다른 아군 숫자 변동"]) != "")
+            {
+                fUFun.powerUpTotem = Convert.ToInt32(DictEffect["다른 아군 숫자 변동"]);
+                fUFun.unitEffectTxt += ", 아군 축복" + " + " + fUFun.powerUpTotem;
+            }
+            if (Convert.ToString(DictEffect["못 움직임 이동 대신"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 빙결";
+                fUFun.frozen = true;
+            }
 
-        fUFun.wakeUpUnit();
-        fU.transform.position = origin.transform.position;
-        //파워 토템
-        if (fUFun.powerUpTotem != 0)
-        {
+            fUFun.wakeUpUnit();
+            fU.transform.position = origin.transform.position;
+            //파워 토템
+            if (fUFun.powerUpTotem != 0)
+            {
+                for (int i = 0; i < playerUnits.Count; i++)
+                {
+                    if (playerUnits[i] != fU && !playerUnits[i].GetComponent<Units>().cristalBody)
+                    {
+                        playerUnits[i].GetComponent<Units>().minNum += fUFun.powerUpTotem - origin.GetComponent<Units>().powerUpTotem;
+                        playerUnits[i].GetComponent<Units>().maxNum += fUFun.powerUpTotem - origin.GetComponent<Units>().powerUpTotem;
+                    }
+                }
+            }
             for (int i = 0; i < playerUnits.Count; i++)
             {
-                playerUnits[i].GetComponent<Units>().minNum += fUFun.powerUpTotem - origin.GetComponent<Units>().powerUpTotem;
-                playerUnits[i].GetComponent<Units>().maxNum += fUFun.powerUpTotem - origin.GetComponent<Units>().powerUpTotem;
+                if (playerUnits[i] != fU && playerUnits[i].GetComponent<Units>().powerUpTotem != 0)
+                {
+                    fUFun.minNum += playerUnits[i].GetComponent<Units>().powerUpTotem;
+                    fUFun.maxNum += playerUnits[i].GetComponent<Units>().powerUpTotem;
+                }
             }
+            Destroy(origin);
         }
-        for (int i = 0; i < playerUnits.Count; i++)
+        else
         {
-            if (playerUnits[i] != fU && playerUnits[i].GetComponent<Units>().powerUpTotem != 0)
+            GameObject fU = Instantiate(enermyBass);
+            Dictionary<string, object> Dict = libmgr.unitCode[origin.GetComponent<Units>().upgradeCode];
+            fU.name = Dict["Name"].ToString();
+
+            Units fUFun = fU.GetComponent<Units>();
+            fUFun.myCodeNum = origin.GetComponent<Units>().upgradeCode;
+            fUFun.upgradeRank = origin.GetComponent<Units>().upgradeRank;
+            fUFun.moveCountUpgrade = Convert.ToSingle(Dict["이동횟수 강화"]);
+            fUFun.minNumUpgrade = Convert.ToSingle(Dict["숫자 최소치 강화"]);
+            fUFun.maxNumUpgrade = Convert.ToSingle(Dict["숫자최대치 강화"]);
+            fUFun.moveMaxCount = (int)Dict["이동 횟수"] + (int)fUFun.moveCountUpgrade * fUFun.upgradeRank;
+            fUFun.minNum = (int)Dict["숫자 최소치"] + (int)fUFun.minNumUpgrade * fUFun.upgradeRank;
+            fUFun.maxNum = (int)Dict["숫자 최대치"] + (int)fUFun.maxNumUpgrade * fUFun.upgradeRank;
+            fUFun.unit2DImage = Resources.Load<Sprite>("Image2D/" + fUFun.myCodeNum);
+
+            Dictionary<string, object> DictEffect = libmgr.unitCodeEffects[origin.GetComponent<Units>().upgradeCode];
+            if (Convert.ToString(DictEffect["대각선만 이동"]) == "TRUE") { fUFun.bishop = true; fUFun.rook = false; }
+            if (Convert.ToString(DictEffect["전방위 이동"]) == "TRUE") { fUFun.bishop = true; fUFun.rook = true; }
+
+            if (fUFun.rook && !fUFun.bishop)
+                fUFun.unitEffectTxt = "룩";
+            else if (!fUFun.rook && fUFun.bishop)
+                fUFun.unitEffectTxt = "비숍";
+            else if (fUFun.rook && fUFun.bishop)
+                fUFun.unitEffectTxt = "퀸";
+
+            if (Convert.ToString(DictEffect["뒤로 이동 불가"]) == "TRUE")
             {
-                fUFun.minNum += playerUnits[i].GetComponent<Units>().powerUpTotem;
-                fUFun.maxNum += playerUnits[i].GetComponent<Units>().powerUpTotem;
+                fUFun.unitEffectTxt += ", 폰";
+                fUFun.pawn = true;
             }
+            if (Convert.ToString(DictEffect["홀수 차례만 효과"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 홀수 차례";
+                fUFun.oddTurnEffect = true;
+            }
+            if (Convert.ToString(DictEffect["짝수 차례만 효과"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 짝수 차례";
+                fUFun.evenTurnEffect = true;
+            }
+            if (Convert.ToString(DictEffect["좌우 워프"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 워프";
+                fUFun.warp = true;
+            }
+            if (Convert.ToString(DictEffect["전방향 전투"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 전방향 전투";
+                fUFun.attackEvery = true;
+            }
+            if (Convert.ToString(DictEffect["위치 교체"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 교대";
+                fUFun.changePos = true;
+            }
+            if (Convert.ToString(DictEffect["공격시 상대 숫자 변동"]) != "")
+            {
+                fUFun.attackMinusPow = Convert.ToInt32(DictEffect["공격시 상대 숫자 변동"]);
+                fUFun.unitEffectTxt += ", 저주" + " - " + fUFun.attackMinusPow;
+            }
+            if (Convert.ToString(DictEffect["자신 숫자 변동"]) != "")
+            {
+                fUFun.morePower = Convert.ToInt32(DictEffect["자신 숫자 변동"]);
+                fUFun.unitEffectTxt += ", 축복" + " + " + fUFun.morePower;
+            }
+            if (Convert.ToString(DictEffect["죽으면 패배"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 심장";
+                fUFun.playerHeart = true;
+            }
+            if (Convert.ToString(DictEffect["위치 고정"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 이동 불가";
+                fUFun.cantMove = true;
+            }
+            if (Convert.ToString(DictEffect["상대 진영 끝에 도달하면 강화(뒤집기)"]) != "")
+            {
+                fUFun.unitEffectTxt += ", 업그레이드";
+                fUFun.upgradeCode = DictEffect["상대 진영 끝에 도달하면 강화(뒤집기)"];
+            }
+            if (Convert.ToString(DictEffect["자신 진영에서만 이동 가능"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 士";
+                fUFun.onlyMyPlace = true;
+            }
+            if (Convert.ToString(DictEffect["중립진영에 배치"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 정찰병";
+                fUFun.placeAnywhere = true;
+            }
+            if (Convert.ToString(DictEffect["못 움직임 사망시"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 독";
+                fUFun.poision = true;
+            }
+            if (Convert.ToString(DictEffect["숫자 범위 변하지 않음"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 숫자 변동 없음";
+                fUFun.cristalBody = true;
+            }
+            if (Convert.ToString(DictEffect["차례 종료시 랜덤 이동"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 랜덤 이동";
+                fUFun.randomMove = true;
+            }
+            if (Convert.ToString(DictEffect["다른 아군 숫자 변동"]) != "")
+            {
+                fUFun.powerUpTotem = Convert.ToInt32(DictEffect["다른 아군 숫자 변동"]);
+                fUFun.unitEffectTxt += ", 아군 축복" + " + " + fUFun.powerUpTotem;
+            }
+            if (Convert.ToString(DictEffect["못 움직임 이동 대신"]) == "TRUE")
+            {
+                fUFun.unitEffectTxt += ", 빙결";
+                fUFun.frozen = true;
+            }
+
+            fUFun.wakeUpUnit();
+            fU.transform.position = origin.transform.position;
+            //파워 토템
+            if (fUFun.powerUpTotem != 0)
+            {
+                for (int i = 0; i < enermyUnits.Count; i++)
+                {
+                    if (enermyUnits[i] != fU && !enermyUnits[i].GetComponent<Units>().cristalBody)
+                    {
+                        enermyUnits[i].GetComponent<Units>().minNum += fUFun.powerUpTotem - origin.GetComponent<Units>().powerUpTotem;
+                        enermyUnits[i].GetComponent<Units>().maxNum += fUFun.powerUpTotem - origin.GetComponent<Units>().powerUpTotem;
+                    }
+                }
+            }
+            for (int i = 0; i < enermyUnits.Count; i++)
+            {
+                if (enermyUnits[i] != fU && enermyUnits[i].GetComponent<Units>().powerUpTotem != 0)
+                {
+                    fUFun.minNum += enermyUnits[i].GetComponent<Units>().powerUpTotem;
+                    fUFun.maxNum += enermyUnits[i].GetComponent<Units>().powerUpTotem;
+                }
+            }
+            Destroy(origin);
         }
-        Destroy(origin);
     }
 
     public void UnitRandomMoveP()
@@ -3731,5 +4079,11 @@ public class GameMgr : MonoBehaviour
                 }
             }
         }
+    }
+
+    public IEnumerator waitTurn()
+    {
+        yield return new WaitForSecondsRealtime(0.5f);
+        turnOverBool = true;
     }
 }

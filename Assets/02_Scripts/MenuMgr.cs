@@ -18,6 +18,7 @@ public class MenuMgr : MonoBehaviour
     public AudioClip clickAudioClip;
     public AudioClip charactSelectAudio;
     public AudioClip backgroundAudio;
+    public AudioSource backAudioSource;
 
     public GameObject soundPanel;
     public Slider mainSoundBar;
@@ -32,13 +33,14 @@ public class MenuMgr : MonoBehaviour
         mainSoundBar.value = gameFlow.GetComponent<GameFlow>().mainSoundSize;
         backGroundSoundBar.value = gameFlow.GetComponent<GameFlow>().bgmSoundSize;
         effectSoundBar.value = gameFlow.GetComponent<GameFlow>().effectSoundSize;
-        playerAudio.PlayOneShot(backgroundAudio, gameFlow.GetComponent<GameFlow>().bgmSoundSize);
+        backAudioSource.PlayOneShot(backgroundAudio, gameFlow.GetComponent<GameFlow>().bgmSoundSize);
     }
 
     // Update is called once per frame
     void Update()
     {
         playerAudio.volume = gameFlow.GetComponent<GameFlow>().mainSoundSize;
+        backAudioSource.volume = gameFlow.GetComponent<GameFlow>().bgmSoundSize* gameFlow.GetComponent<GameFlow>().mainSoundSize;
         if (soundPanel)
         {
             gameFlow.GetComponent<GameFlow>().mainSoundSize = mainSoundBar.value;
@@ -68,6 +70,7 @@ public class MenuMgr : MonoBehaviour
     }
     public void ContinueBtn()
     {
+        if (library.playerUnitsData[0] != null)
         SceneManager.LoadScene(2);
     }
 

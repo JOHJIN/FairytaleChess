@@ -114,9 +114,13 @@ public class Units : MonoBehaviour
             }
         }
 
-        if (upgradeCode != null && transform.position.z >= gmr.mapMaxZ)
+        // 업그레이드 뒤집기
+        if (upgradeCode != null)
         {
-            gmr.UpgradeMapUnit(this.gameObject);
+            if(gmr.playerUnits.Any(unit => unit == this.gameObject) && transform.position.z >= gmr.mapMaxZ)
+                gmr.UpgradeMapUnit(this.gameObject);
+            else if(gmr.enermyUnits.Any(unit => unit == this.gameObject) && transform.position.z <= 1)
+                gmr.UpgradeMapUnit(this.gameObject);
         }
 
         if (gmr.selectUnit == this.gameObject)
@@ -246,7 +250,6 @@ public class Units : MonoBehaviour
     //위치 교체
     public void changingPosition(GameObject main, GameObject target)
     {
-        if (cantMove) return;
         Vector3 dd = main.transform.position;
         transform.position = target.transform.position;
         target.transform.position = dd;
