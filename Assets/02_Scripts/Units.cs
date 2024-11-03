@@ -81,6 +81,29 @@ public class Units : MonoBehaviour
                 transform.position = UnitVec;
                 moveAfterFight();
                 moveSmooth = false;
+                if(upgradeCode != null)
+                {
+                    if (this.transform.position.z == gmr.mapMaxZ && gmr.playerUnits.Any(unit => unit == this.gameObject))
+                    {
+                        if (moving)
+                        {
+                            moveAble = false;
+                            gmrUi.moveCountTxtChange(gmr.turnMaxMove - gmr.turnMove);
+                            moving = false;
+                        }
+                        upgrading();
+                    }
+                    else if (this.transform.position.z == 1 && gmr.enermyUnits.Any(unit => unit == this.gameObject))
+                    {
+                        if (moving)
+                        {
+                            moveAble = false;
+                            gmrUi.moveCountTxtChange(gmr.turnMaxMove - gmr.turnMove);
+                            moving = false;
+                        }
+                        upgrading();
+                    }
+                }
             }
         }
         if (placementMove)
@@ -100,28 +123,6 @@ public class Units : MonoBehaviour
                 }
             }
         }
-        //이동횟수 남았을 때 다른 유닛 선택시 이동 횟수 0
-        if (moving)
-        {
-            if (!gmr.selectUnit == gameObject)
-            {
-                if (gmr.selectUnit.tag == "Friendly" || gmr.selectUnit.tag == "Player")
-                {
-                    moveAble = false;
-                    gmrUi.moveCountTxtChange(gmr.turnMaxMove - gmr.turnMove);
-                    moving = false;
-                }
-            }
-        }
-
-        // 업그레이드 뒤집기
-        if (upgradeCode != null)
-        {
-            if(gmr.playerUnits.Any(unit => unit == this.gameObject) && transform.position.z >= gmr.mapMaxZ)
-                gmr.UpgradeMapUnit(this.gameObject);
-            else if(gmr.enermyUnits.Any(unit => unit == this.gameObject) && transform.position.z <= 1)
-                gmr.UpgradeMapUnit(this.gameObject);
-        }
 
         if (gmr.selectUnit == this.gameObject)
         {
@@ -130,6 +131,32 @@ public class Units : MonoBehaviour
         else
         {
             selectEffect.SetActive(false);
+        }
+
+        //이동횟수 남았을 때 다른 유닛 선택시 이동 횟수 0
+        if (moving)
+        {
+            if (this.gameObject != null)
+            {
+                if (!gmr.selectUnit == this.gameObject)
+                {
+                    if (gmr.selectUnit.tag == "Friendly" || gmr.selectUnit.tag == "Player" || !gmr.playerTurn || gmr.selectUnit == null)
+                    {
+                        moveAble = false;
+                        gmr.turnMove++;
+                        gmrUi.moveCountTxtChange(gmr.turnMaxMove - gmr.turnMove);
+                        moving = false;
+                    }
+                }
+            }
+            else if (this.gameObject == null)
+            {
+                moveAble = false;
+                gmr.turnMove++;
+                gmrUi.moveCountTxtChange(gmr.turnMaxMove - gmr.turnMove);
+                moving = false;
+                Destroy(this);
+            }
         }
     }
 
@@ -386,6 +413,14 @@ public class Units : MonoBehaviour
                     }
                 }
             }
+        }
+    }
+
+    public void upgrading()
+    {
+        if (upgradeCode != null)
+        {
+            gmr.UpgradeMapUnit(this.gameObject);
         }
     }
 }

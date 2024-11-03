@@ -2,12 +2,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Unity.VisualScripting;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
-using UnityEngine.Tilemaps;
 using UnityEngine.UI;
-using static UnityEngine.UI.CanvasScaler;
 
 public class GameMgr : MonoBehaviour
 {
@@ -1410,6 +1406,18 @@ public class GameMgr : MonoBehaviour
             //플레이어 유닛 승리
             if (aRnd > bRnd)
             {
+                if (!playerTurn)
+                {
+                    if (b.GetComponent<Units>().moveAble && !b.GetComponent<Units>().moving) turnMove++;
+
+                    else if (!b.GetComponent<Units>().moveAble && b.GetComponent<Units>().moving)
+                    {
+                        b.GetComponent<Units>().moveAble = false;
+                        turnMove++;
+                        gmrUi.moveCountTxtChange(turnMaxMove - turnMove);
+                        b.GetComponent<Units>().moving = false;
+                    }
+                }
                 enermyUnits.Remove(b);
                 a.GetComponent<Units>().maxNum -= bRnd;
                 a.GetComponent<Units>().minNum -= bRnd;
@@ -1417,7 +1425,18 @@ public class GameMgr : MonoBehaviour
                 { a.GetComponent<Units>().minNum = 0; }
                 a.GetComponent<Units>().halfNum = (a.GetComponent<Units>().maxNum + a.GetComponent<Units>().minNum) / 2;
                 if (b.GetComponent<Units>().poision)
-                { a.GetComponent<Units>().nextMoveFalse = true; }
+                { 
+                    a.GetComponent<Units>().nextMoveFalse = true;
+                    if (a.GetComponent<Units>().moveAble)
+                    {
+                        a.GetComponent<Units>().moveAble = false;
+                        if (playerTurn)
+                        {
+                            turnMove++;
+                            gmrUi.moveCountTxt.text = (turnMaxMove - turnMove).ToString();
+                        }
+                    }
+                }
                 if (b.GetComponent<Units>().playerHeart)
                 {
                     if (libmgr.stageLevelCount == 6)
@@ -1454,8 +1473,18 @@ public class GameMgr : MonoBehaviour
             //에너미 유닛 승리
             else if (bRnd > aRnd)
             {
-                if (a.GetComponent<Units>().moveAble) turnMove++;
+                if (playerTurn)
+                {
+                    if (a.GetComponent<Units>().moveAble && !a.GetComponent<Units>().moving) turnMove++;
 
+                    else if (!a.GetComponent<Units>().moveAble && a.GetComponent<Units>().moving)
+                    {
+                        a.GetComponent<Units>().moveAble = false;
+                        turnMove++;
+                        gmrUi.moveCountTxtChange(turnMaxMove - turnMove);
+                        a.GetComponent<Units>().moving = false;
+                    }
+                }
                 playerUnits.Remove(a);
                 var targetUnitData = libmgr.playerUnitsData.Find(unitData => unitData[0] == a.GetComponent<Units>().myCodeNum &&
                 Convert.ToInt32(unitData[1]) == a.GetComponent<Units>().upgradeRank);
@@ -1469,7 +1498,18 @@ public class GameMgr : MonoBehaviour
                 { b.GetComponent<Units>().minNum = 0; }
                 b.GetComponent<Units>().halfNum = (b.GetComponent<Units>().maxNum + b.GetComponent<Units>().minNum) / 2;
                 if (a.GetComponent<Units>().poision)
-                { b.GetComponent<Units>().nextMoveFalse = true; }
+                { 
+                    b.GetComponent<Units>().nextMoveFalse = true; 
+                    if (a.GetComponent<Units>().moveAble)
+                    {
+                        a.GetComponent<Units>().moveAble = false;
+                        if (playerTurn)
+                        {
+                            turnMove++;
+                            gmrUi.moveCountTxt.text = (turnMaxMove - turnMove).ToString();
+                        }
+                    }
+                }
                 if (a.GetComponent<Units>().playerHeart)
                 {
                     lose = true;
@@ -1495,7 +1535,29 @@ public class GameMgr : MonoBehaviour
             }
             //무승부 양자 파괴
             else
-            {              
+            {
+                if (!playerTurn)
+                {
+                    if (b.GetComponent<Units>().moveAble && !b.GetComponent<Units>().moving) turnMove++;
+                    else if (!b.GetComponent<Units>().moveAble && b.GetComponent<Units>().moving)
+                    {
+                        b.GetComponent<Units>().moveAble = false;
+                        turnMove++;
+                        gmrUi.moveCountTxtChange(turnMaxMove - turnMove);
+                        b.GetComponent<Units>().moving = false;
+                    }
+                }
+                else if (playerTurn)
+                {
+                    if (a.GetComponent<Units>().moveAble && !a.GetComponent<Units>().moving) turnMove++;
+                    else if (!a.GetComponent<Units>().moveAble && a.GetComponent<Units>().moving)
+                    {
+                        a.GetComponent<Units>().moveAble = false;
+                        turnMove++;
+                        gmrUi.moveCountTxtChange(turnMaxMove - turnMove);
+                        a.GetComponent<Units>().moving = false;
+                    }
+                }
                 var targetUnitData = libmgr.playerUnitsData.Find(unitData => unitData[0] == a.GetComponent<Units>().myCodeNum &&
                 Convert.ToInt32(unitData[1]) == a.GetComponent<Units>().upgradeRank);
                 if (targetUnitData != null)
@@ -3437,6 +3499,10 @@ public class GameMgr : MonoBehaviour
                 if (move1EnermyAi == enermyUnits[i])
                 {
                     move1EnermyAi = null;
+                    if (enermyUnits.Any(unit => unit.GetComponent<Units>().moveAble))
+                    {
+                        i = 0;
+                    }
                 }
             }
             else
@@ -3653,8 +3719,8 @@ public class GameMgr : MonoBehaviour
                     else
                     {
 
-                        if (Mathf.Abs(move1EnermyAi.transform.position.x - playerUnits[0].transform.position.x)
-                    + Mathf.Abs(move1EnermyAi.transform.position.z - playerUnits[0].transform.position.z) >
+                        if (Mathf.Abs(move1EnermyAi.transform.position.x - targetPlayerUnit1Ai.transform.position.x)
+                    + Mathf.Abs(move1EnermyAi.transform.position.z - targetPlayerUnit1Ai.transform.position.z) >
                             Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[0].transform.position.x)
                     + Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[0].transform.position.z)
                         && enermyUnits[i].GetComponent<Units>().rook && Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[0].transform.position.x)
@@ -3680,7 +3746,10 @@ public class GameMgr : MonoBehaviour
                         }
                         else if (Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[0].transform.position.x)
                         + Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[0].transform.position.z) <= 3.1
-                        && enermyUnits[i].GetComponent<Units>().bishop)
+                        && enermyUnits[i].GetComponent<Units>().bishop && Mathf.Abs(move1EnermyAi.transform.position.x - targetPlayerUnit1Ai.transform.position.x)
+                    + Mathf.Abs(move1EnermyAi.transform.position.z - targetPlayerUnit1Ai.transform.position.z) >
+                            Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[0].transform.position.x)
+                    + Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[0].transform.position.z))
                         {
                             if (Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[0].transform.position.x)
                        - Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[0].transform.position.z) < 0.1)
@@ -3740,10 +3809,10 @@ public class GameMgr : MonoBehaviour
                         }
 
                         //기존 등록된것보다 플레이어 유닛에게 가까울 때
-                        if (Mathf.Abs(move1EnermyAi.transform.position.x - playerUnits[0].transform.position.x)
-                    + Mathf.Abs(move1EnermyAi.transform.position.z - playerUnits[0].transform.position.z) - move1EnermyAi.GetComponent<Units>().moveMaxCount >
-                            Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[0].transform.position.x)
-                    + Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[0].transform.position.z))
+                        if (Mathf.Abs(move1EnermyAi.transform.position.x -targetPlayerUnit1Ai.transform.position.x)
+                    + Mathf.Abs(move1EnermyAi.transform.position.z - targetPlayerUnit1Ai.transform.position.z) - move1EnermyAi.GetComponent<Units>().moveMaxCount >
+                            Mathf.Abs(enermyUnits[i].transform.position.x - playerUnits[j].transform.position.x)
+                    + Mathf.Abs(enermyUnits[i].transform.position.z - playerUnits[j].transform.position.z))
                         {                          
                             move1EnermyAi = enermyUnits[i];
                             targetPlayerUnit1Ai = playerUnits[j];
@@ -3908,7 +3977,11 @@ public class GameMgr : MonoBehaviour
                     fUFun.maxNum += playerUnits[i].GetComponent<Units>().powerUpTotem;
                 }
             }
+            selectOn = false;
+            selectUnit = null;
+            playerUnits.Remove(origin);
             Destroy(origin);
+            playerUnits.Add(fU);
         }
         else
         {
@@ -4051,7 +4124,9 @@ public class GameMgr : MonoBehaviour
                     fUFun.maxNum += enermyUnits[i].GetComponent<Units>().powerUpTotem;
                 }
             }
+            enermyUnits.Remove(origin);
             Destroy(origin);
+            enermyUnits.Add(fU);
         }
     }
 
