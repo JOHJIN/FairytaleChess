@@ -426,3 +426,4 @@ public class Units : MonoBehaviour
 }
     
     //È¦Â¦ ±¸Çö ¾ÈµÊ, ·£´ý ÀÌµ¿ ±¸Çö ¾ÈµÊ
+    //È¦Â¦ È¦ false || ÅÏ Â¦
